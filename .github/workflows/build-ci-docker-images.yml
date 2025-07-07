@@ -11,11 +11,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: [develop]
-    paths:
-      - "requirements*"
-      - "tests/requirements.txt"
-      - "setup.py"
-      - ".github/workflows/build-ci-docker-images.yml"
   schedule:
     - cron: "5 0 * * *"
 
@@ -34,10 +29,13 @@ jobs:
     name: build-ci-docker-images
     runs-on: [self-hosted, 4gpu]
     outputs:
+      run_build: ${{ steps.event_name.outputs.run_build }}
+      run_downstream: ${{ steps.event_name.outputs.run_downstream }}
       image_name: ${{ steps.set_image_name.outputs.image_name }}
   
     steps:
       - name: Download Code
+        id: event_name
         env:
           work_dir: ${{ github.workspace }}
         run: |
@@ -51,16 +49,50 @@ jobs:
           git config --global user.email "paddle_ci@example.com"
           git pull
           git submodule update --init --recursive --force
-          if [ -n "${PR_ID}" ]; then
+          run_build=false
+          run_downstream=false
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            run_build=true
+            run_downstream=false
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            run_build=true
+            run_downstream=true
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git fetch origin pull/${PR_ID}/head
             git checkout -b PR_${PR_ID} FETCH_HEAD
             git remote add upstream https://github.com/PaddlePaddle/PaddleFormers.git
             git fetch upstream ${BRANCH}
             git merge ${BRANCH}
             git diff --numstat ${BRANCH} -- | awk '{print $NF}'
-          else
-            echo "Not in a pull_request event. Skipping PR-specific operations."
+            files=$(git diff --numstat ${BRANCH} -- | awk '{print $NF}')
+            target_lists_for_pr=(
+                "requirements"
+                "tests/requirements.txt"
+                "setup.py"
+                ".github/workflows/build-ci-docker-images.yml"
+            )
+            for file_name in `git diff --numstat ${BRANCH} -- |awk '{print $NF}'`;do
+              for ((i=0; i<${#target_lists_for_pr[@]}; i++)); do
+                arr_file_name=(${file_name//// })
+                dir1=${arr_file_name[0]}
+                dir2=${arr_file_name[1]}
+                dir3=${arr_file_name[2]}
+                dir4=${arr_file_name[3]}
+                file_item=$dir1/$dir2/$dir3/$dir4
+                if [ ! -f "${file_name}" ]; then
+                    continue
+                fi
+                if [[ "${file_item}" == *"${target_lists_for_pr[i]}"* ]];then
+                    run_build=true
+                    run_downstream=true
+                    break 2
+                fi
+              done
+            done
           fi
+          echo "run_build=${run_build}" >> ${{ github.env }}
+          echo "run_downstream=${run_downstream}" >> ${{ github.env }}
+          echo "run_downstream=${run_downstream}" >> "$GITHUB_OUTPUT"
           git log --pretty=oneline -10
 
       - name: Write Dockerfile Inline
@@ -100,32 +132,40 @@ jobs:
       
       - name: Build Docker Image
         run: |
-          docker build -t ${{ env.image_name }} .
+          if [[ "${{ env.run_build }}" == "false" ]]; then
+            echo "No need to build docker image"
+          else
+            docker build -t ${{ env.image_name }} .
+          fi
 
   test-ci-docker-images:
     name: test-ci-docker-images
-    if: github.event_name == 'pull_request'
     needs: build-ci-docker-images
     uses: ./.github/workflows/unittest-gpu.yml
     with:
+      run_downstream: ${{ needs.build-ci-docker-images.outputs.run_downstream }}
       image_name: ${{ needs.build-ci-docker-images.outputs.image_name }}
 
   clean-ci-image:
+    name: clean-ci-image
     needs: test-ci-docker-images
-    if: github.event_name == 'pull_request'
     runs-on: [self-hosted, 4gpu]
     steps:
       - name: Remove CI Image
         run: |
-          image_name="iregistry.baidu-int.com/paddlecloud/base-images:paddlecloud-ubuntu18.04-gcc8.2-cuda11.8-cudnn8.6-nccl2.15.5-${PR_ID}-${COMMIT_ID}"
-          CONTAINERS=$(docker ps -a --filter "ancestor=$image_name" --format "{{.ID}}")
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            image_name="iregistry.baidu-int.com/paddlecloud/base-images:paddlecloud-ubuntu18.04-gcc8.2-cuda11.8-cudnn8.6-nccl2.15.5-${PR_ID}-${COMMIT_ID}"
+            CONTAINERS=$(docker ps -a --filter "ancestor=$image_name" --format "{{.ID}}")
 
-          if [ -z "$CONTAINERS" ]; then
-              echo "$image_name is not using by any container, deleting..."
-              docker rmi "$image_name"
+            if [ -z "$CONTAINERS" ]; then
+                echo "$image_name is not using by any container, deleting..."
+                docker rmi "$image_name"
+            else
+                echo "$image_name is using by containers:"
+                echo "$CONTAINERS"
+            fi
           else
-              echo "$image_name is using by containers:"
-              echo "$CONTAINERS"
+            echo "Not a pull request, no need to clean up images"
           fi
 
           # 安全删除悬空镜像（无悬空镜像时跳过）
