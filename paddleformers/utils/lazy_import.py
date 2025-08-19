@@ -83,10 +83,11 @@ class _LazyModule(ModuleType):
                 ) from e
         else:
             # Handle explicit import shortcuts
-            for module_name, aliases in self._explicit_import_shortcut.items():
-                if name in aliases:
-                    value = self._get_module(module_name)
-                    break
+            value = None
+            for key, values in self._explicit_import_shortcut.items():
+                if name in values:
+                    value = self._get_module(key)
+
             if value is None:
                 raise AttributeError(f"module {self.__name__} has no attribute {name}")
 
