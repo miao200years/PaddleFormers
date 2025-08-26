@@ -65,4 +65,4 @@ class Ernie4_5_VL_TokenizationTest(unittest.TestCase):
         self.assertEqual(text, decode_text)
 
 
-# Ernie4_5_VL_TokenizationTest().test_slow_tokenizer_from_pretrained()
+Ernie4_5_VL_TokenizationTest().test_slow_tokenizer_from_pretrained()

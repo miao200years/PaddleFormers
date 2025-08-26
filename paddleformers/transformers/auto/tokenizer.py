@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
-
-# import logging
 import os
 import warnings
 from typing import Dict, Optional, Union
@@ -152,10 +150,7 @@ def _bind_paddle_mixin_if_available(tokenizer_class):
     Returns:
         The tokenizer class bound with PaddleTokenizerMixin, or the original class.
     """
-    try:
-        return type(tokenizer_class.__name__, (PaddleTokenizerMixin, tokenizer_class), {})
-    except:
-        return tokenizer_class
+    return type(tokenizer_class.__name__, (PaddleTokenizerMixin, tokenizer_class), {})
 
 
 class AutoTokenizer(hf.AutoTokenizer):
