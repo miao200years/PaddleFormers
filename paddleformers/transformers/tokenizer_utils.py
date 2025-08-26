@@ -19,7 +19,7 @@ from __future__ import annotations
 import os
 import re
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import Any, Dict, List, Union
 
 from transformers import BatchEncoding
 from transformers.tokenization_utils_base import (
@@ -34,16 +34,13 @@ from transformers.utils.generic import ExplicitEnum
 from ..utils.download import DownloadSource, resolve_file_path
 from ..utils.log import logger
 
-if TYPE_CHECKING:
-    from transformers.tokenization_utils import PreTrainedTokenizer
-
 # legacy PretrainedTokenizer, which is different from huggingface PreTrainedTokenizer
 try:
     from .legacy.tokenizer_utils import PretrainedTokenizer
 
-    PretrainedTokenizer = PretrainedTokenizer
+    PreTrainedTokenizer = PretrainedTokenizer
 except:
-    pass
+    from transformers.tokenization_utils import PreTrainedTokenizer
 
 
 class TensorType(ExplicitEnum):
