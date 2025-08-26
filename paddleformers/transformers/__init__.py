@@ -18,6 +18,8 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 from ..utils.lazy_import import _LazyModule
 
+from .download_utils import *
+
 # from .auto.modeling import AutoModelForCausalLM
 import_structure = {
     "kto_criterion": [
@@ -37,6 +39,12 @@ import_structure = {
         "AddedToken",
         "normalize_chars",
         "tokenize_special_chars,convert_to_unicode,",
+        "PreTrainedTokenizer",
+    ],
+    "tokenizer_utils_base": [
+        "PaddingStrategy",
+        "TextInput",
+        "TensorType",
     ],
     "attention_utils": ["create_bigbird_rand_mask_idx_list"],
     "tensor_parallel_utils": [],
@@ -340,7 +348,6 @@ if TYPE_CHECKING:
         tokenize_special_chars,
         convert_to_unicode,
     )
-    from .tokenizer_utils_fast import PretrainedTokenizerFast
     from .processing_utils import ProcessorMixin
     from .feature_extraction_utils import BatchFeature, FeatureExtractionMixin
     from .image_processing_utils import ImageProcessingMixin
