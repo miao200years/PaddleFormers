@@ -18,11 +18,12 @@ import unittest
 
 from paddleformers.transformers import Ernie4_5_VLTokenizer
 
-HUB_FLAG = "huggingface"
+HUB_FLAG = "aistudio"
 
 
+@unittest.skip("skipping due to connection error!")
 class Ernie4_5_VL_TokenizationTest(unittest.TestCase):
-    from_pretrained_id = "baidu/ERNIE-4.5-VL-28B-A3B-Base-PT"
+    from_pretrained_id = "PaddlePaddle/ERNIE-4.5-VL-28B-A3B-Base-PT"
     tokenizer_class = Ernie4_5_VLTokenizer
     test_slow_tokenizer = True
     space_between_special_tokens = False
