@@ -33,14 +33,12 @@ from transformers.utils.generic import ExplicitEnum
 
 from ..utils.download import DownloadSource, resolve_file_path
 from ..utils.log import logger
+from .legacy.tokenizer_utils import PretrainedTokenizer
 
 # legacy PretrainedTokenizer, which is different from huggingface PreTrainedTokenizer
-try:
-    from .legacy.tokenizer_utils import PretrainedTokenizer
 
-    PreTrainedTokenizer = PretrainedTokenizer
-except:
-    from transformers.tokenization_utils import PreTrainedTokenizer
+
+PreTrainedTokenizer = PretrainedTokenizer
 
 
 class TensorType(ExplicitEnum):
