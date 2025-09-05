@@ -39,6 +39,7 @@ import_structure = {
         "normalize_chars",
         "tokenize_special_chars",
         "convert_to_unicode",
+        "AddedToken",
     ],
     "attention_utils": ["create_bigbird_rand_mask_idx_list"],
     "tensor_parallel_utils": [],
@@ -396,12 +397,5 @@ if TYPE_CHECKING:
     from .qwen3 import *
     from .qwen3_moe import *
 else:
-    from tokenizers import AddedToken
 
-    sys.modules[__name__] = _LazyModule(
-        __name__,
-        globals()["__file__"],
-        import_structure,
-        module_spec=__spec__,
-        extra_objects={"AddedToken": AddedToken},
-    )
+    sys.modules[__name__] = _LazyModule(__name__, globals()["__file__"], import_structure, module_spec=__spec__)
