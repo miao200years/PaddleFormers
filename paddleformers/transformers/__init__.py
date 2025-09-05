@@ -18,6 +18,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 from ..utils.lazy_import import _LazyModule
 
+
 # from .auto.modeling import AutoModelForCausalLM
 import_structure = {
     "kto_criterion": [
@@ -333,7 +334,7 @@ import_structure = {
     "qwen2_moe": [],
     "qwen3_moe": [],
     "auto": ["AutoModelForCausalLM"],
-    "legacy.tokenizer_utils_base": ["AddedToken", "EncodingFast"],
+    "legacy.tokenizer_utils_base": ["EncodingFast"],
     "legacy": [],
 }
 
@@ -395,9 +396,12 @@ if TYPE_CHECKING:
     from .qwen3 import *
     from .qwen3_moe import *
 else:
+    from tokenizers import AddedToken
+
     sys.modules[__name__] = _LazyModule(
         __name__,
         globals()["__file__"],
         import_structure,
         module_spec=__spec__,
+        extra_objects={"AddedToken": AddedToken},
     )

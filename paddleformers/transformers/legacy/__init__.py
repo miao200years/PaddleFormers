@@ -40,7 +40,6 @@ import_structure = {
         "BatchEncoding",
         "SpecialTokensMixin",
         "PretrainedTokenizerBase",
-        "AddedToken",
         "EncodingFast",
     ],
 }
