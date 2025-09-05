@@ -402,5 +402,4 @@ else:
         globals()["__file__"],
         import_structure,
         module_spec=__spec__,
-        extra_objects={"AddedToken": AddedToken},
     )
