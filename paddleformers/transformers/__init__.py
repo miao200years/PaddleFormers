@@ -35,7 +35,6 @@ import_structure = {
         "BPETokenizer",
         "tokenize_chinese_chars",
         "is_chinese_char",
-        "AddedToken",
         "normalize_chars",
         "tokenize_special_chars",
         "convert_to_unicode",
@@ -334,6 +333,8 @@ import_structure = {
     "qwen2_moe": [],
     "qwen3_moe": [],
     "auto": ["AutoModelForCausalLM"],
+    "legacy.tokenizer_utils_base": ["AddedToken", "EncodingFast"],
+    "legacy": [],
 }
 
 if TYPE_CHECKING:
