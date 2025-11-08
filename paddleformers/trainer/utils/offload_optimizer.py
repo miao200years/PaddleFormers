@@ -37,7 +37,7 @@ def reload(tensor):
     assert new_tensor is tensor, "to_device must be inplace operation"
 
 
-def hack_offload_optimizer(mode="paddlenlp"):
+def hack_offload_optimizer(mode="paddleformers"):
     # Step 1: mock _add_accumulator
     origin_add_accumulator = getattr(Optimizer, "_add_accumulator")
 
