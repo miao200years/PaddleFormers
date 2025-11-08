@@ -37,7 +37,7 @@ def reload(tensor):
     assert new_tensor is tensor, "to_device must be inplace operation"
 
 
-def hack_offload_optimizer():
+def hack_offload_optimizer(mode="paddlenlp"):
     # Step 1: mock _add_accumulator
     origin_add_accumulator = getattr(Optimizer, "_add_accumulator")
 
@@ -58,7 +58,7 @@ def hack_offload_optimizer():
                     reload(arg)
 
             ret = origin_op(*args)
-            is_offload_opt = getattr(args[0], "is_offload_opt", False)
+            is_offload_opt = getattr(args[0], "is_offload_opt", False) and mode == "paddlenlp"
             for i, arg in enumerate(args):
                 if (
                     i >= 2 and isinstance(arg, paddle.Tensor) and is_offload_opt
@@ -76,7 +76,7 @@ def hack_offload_optimizer():
         origin_place = sync_var.place
         reload(sync_var)
         ret = origin_insert_sync(self, sync_var, *args, **kwargs)
-        is_offload_opt = getattr(sync_var, "is_offload_opt", False)
+        is_offload_opt = getattr(sync_var, "is_offload_opt", False) and mode == "paddlenlp"
         if is_offload_opt:
             new_sync_var = to_device(sync_var, origin_place)
         else:
