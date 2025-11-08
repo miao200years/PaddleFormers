@@ -37,7 +37,10 @@ def reload(tensor):
     assert new_tensor is tensor, "to_device must be inplace operation"
 
 
-def hack_offload_optimizer():
+def hack_offload_optimizer(mode=None):
+    if mode == "eb5":
+        return hack_offload_optimizer_eb5()
+
     # Step 1: mock _add_accumulator
     origin_add_accumulator = getattr(Optimizer, "_add_accumulator")
 
