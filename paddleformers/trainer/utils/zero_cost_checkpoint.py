@@ -201,7 +201,6 @@ class ZeroCostCheckpointEMAProcessor:
                     f"[ZCC EMA] accmulating SKIP for global_step:{global_step}, because loss:{loss} > threshold:{zcc_ema_loss_threshold}"
                 )
 
-
     @imperative_base.no_grad()
     def ema_state_dict(self):
         assert self.optimizer_fusion_storage_helper is not None
