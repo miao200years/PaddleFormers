@@ -18,10 +18,12 @@ import hashlib
 import json
 import multiprocessing
 import os
+import random
 import time
 from collections import OrderedDict
 from enum import Enum
 
+import numpy as np
 import paddle
 import paddle.autograd as imperative_base
 import paddle.distributed as dist
@@ -184,6 +186,7 @@ class ZeroCostCheckpointEMAProcessor:
             cpu_master_weights = self.optimizer_fusion_storage_helper.cpu_buffer._slice(
                 self.master_min_offset, self.master_max_offset
             ).cpu()
+
             if zcc_ema_loss_threshold is None or loss < zcc_ema_loss_threshold:
                 self.ema_buffer = self.ema_coef * self.ema_buffer + (1 - self.ema_coef) * cpu_master_weights
                 for index, ema_buf in self.ema_buffer_model_params.items():
@@ -197,6 +200,7 @@ class ZeroCostCheckpointEMAProcessor:
                 logger.info(
                     f"[ZCC EMA] accmulating SKIP for global_step:{global_step}, because loss:{loss} > threshold:{zcc_ema_loss_threshold}"
                 )
+
 
     @imperative_base.no_grad()
     def ema_state_dict(self):
@@ -420,9 +424,25 @@ class ZeroCostCheckpointCallback(TrainerCallback):
             self.maybe_update_zcc_worker(args, model, optimizer, state.global_step)
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{state.global_step}"
             save_infos = self._get_save_infos_based_on_steps(state, args, checkpoint_folder)
-            non_cached_objects = (lr_scheduler.state_dict(), copy.deepcopy(state))
+            non_cached_objects = (lr_scheduler.state_dict(), state, self.get_rng_states(args))
             self.manager.get_idle_worker_for_saving((save_infos, non_cached_objects))
             self.runtime_timer.stop()
+
+    def get_rng_states(self, args):
+        if not args.save_rng_states:
+            return None
+        rng_states = {
+            "python": random.getstate(),
+            "numpy": np.random.get_state(),
+            "cuda": paddle.get_rng_state(),
+            "cpu": paddle.framework.core.default_cpu_generator().get_state(),
+            "world_size": args.world_size,
+        }
+        if args.use_hybrid_parallel:
+            rng_states[
+                "hybrid_parallel_rng_state_tracker"
+            ] = dist.fleet.meta_parallel.get_rng_state_tracker().get_states_tracker()
+        return rng_states
 
     def _get_save_infos_based_on_steps(self, state, args, checkpoint_folder):
         flash_device_checkpoint_dir = None
@@ -707,6 +727,7 @@ class ZeroCostCheckpointWorker:
         # TODO(@gexiao): remove lr scheduler saves
         self.lr_scheduler = None
         self.trainer_state = None
+        self.rng_state = None
 
         # for dumping
         self.flash_device_save_dir = None
@@ -740,7 +761,7 @@ class ZeroCostCheckpointWorker:
             return
         save_infos, non_cached_objects = prepares
         self.flash_device_save_dir, self.persistent_save_dir = save_infos
-        self.lr_scheduler, self.trainer_state = non_cached_objects
+        self.lr_scheduler, self.trainer_state, self.rng_state = non_cached_objects
 
     def process_offload_task(self, dump, global_step):
         """
@@ -906,6 +927,11 @@ class ZeroCostCheckpointWorker:
         trainer_state_name_path = os.path.join(output_dir, TRAINER_STATE_NAME)
         if self.device_id == 0:
             self.trainer_state.save_to_json(trainer_state_name_path)
+
+        # Step2.5: save RNG State
+        if self.rng_state is not None:
+            rng_state_name_path = os.path.join(output_dir, f"rng_state_{dist.get_rank()}.pth")
+            paddle.save(self.rng_state, rng_state_name_path)
 
         # Step3: dump save signals
         saved_signal_path = os.path.join(output_dir, f"saved_signal_{self.global_rank}")
