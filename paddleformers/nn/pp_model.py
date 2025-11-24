@@ -64,6 +64,19 @@ def parse_args(args, mtp_enable=False, is_embed=False):
     print("<parse_args>args: ", args)
     print("<parse_args>mtp_enable: ", mtp_enable)
     print("<parse_args>is_embed: ", is_embed)
+    """
+    <parse_args>args:  (Tensor(shape=[1, 8192], dtype=int64, place=Place(gpu_pinned), stop_gradient=True,
+       [[119702, 100641, 100395, ..., 151329, 151329, 151329]]), Tensor(shape=[1, 1, 8192, 1], dtype=int32, place=Place(gpu_pinned), stop_gradient=True,
+       [[[[20  ],
+          [20  ],
+          [20  ],
+          ...,
+          [8189],
+          [8190],
+          [8191]]]]))
+<parse_args>mtp_enable:  False
+<parse_args>is_embed:  True
+    """
     # if isinstance(args, tuple):
     #     position_embeddings = None
     #     nbatch_pack_offset = None
@@ -746,6 +759,9 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
     @classmethod
     def _prepare_pipeline_inputs_func(cls, inputs):
         print("<_prepare_pipeline_inputs_func> inputs:", inputs)
+        print("--->拆分>>>")
+        for one in inputs:
+            print(">>>>", one)
         """inputs = [{'input_ids': Tensor(shape=[1, 8192], dtype=int64, place=Place(gpu_pinned), stop_gradient=True,
        [[119702, 100641, 100395, ..., 151329, 151329, 151329]]), 'labels': Tensor(shape=[1, 8192], dtype=int64, place=Place(gpu_pinned), stop_gradient=True,
        [[-100, -100, -100, ..., -100, -100, -100]]), 'loss_mask': Tensor(shape=[1, 8192], dtype=int64, place=Place(gpu_pinned), stop_gradient=True,
@@ -790,12 +806,12 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
         last_stage_keys = ["labels", "loss_mask"]
 
         def get_expected_keys(inputs, keys):
-            ret = tuple([inputs.pop(k) for k in keys if k in inputs])
-            if len(ret) == 1:
-                ret = ret[0]
-            # ret = {}
-            # for key in keys:
-            #     ret = inputs.get(key, None)
+            # ret = tuple([inputs.pop(k) for k in keys if k in inputs])
+            # if len(ret) == 1:
+            #     ret = ret[0]
+            ret = {}
+            for key in keys:
+                ret = inputs.get(key, None)
             return ret
 
         if type(inputs) is dict or type(inputs) is OrderedDict:
@@ -809,7 +825,9 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
         keys = list(inputs[0].keys())
         inputs_batch = {key: [data.pop(key) for data in inputs] for key in keys}
         print("<_prepare_pipeline_inputs_func> return 3 first_stage_keys:", first_stage_keys)
+        print(">>>>>>>>>get_expected_keys 1:", get_expected_keys(inputs_batch, first_stage_keys))
         print("<_prepare_pipeline_inputs_func> return 4 last_stage_keys:", last_stage_keys)
+        print(">>>>>>>>>get_expected_keys 2:", get_expected_keys(inputs_batch, last_stage_keys))
         """
         <_prepare_pipeline_inputs_func> return 3 first_stage_keys: ['input_ids', 'attn_mask_startend_row_indices', 'position_ids', 'nbatch_pack_offset']
 <_prepare_pipeline_inputs_func> return 4 last_stage_keys: ['labels', 'loss_mask']
