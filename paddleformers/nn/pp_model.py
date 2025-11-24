@@ -61,6 +61,9 @@ def parse_args(args, mtp_enable=False, is_embed=False):
             - position_ids (Optional[paddle.Tensor]): Position IDs if provided
             All returned tensors have stop_gradient=True.
     """
+    print("<parse_args>args: ", args)
+    print("<parse_args>mtp_enable: ", mtp_enable)
+    print("<parse_args>is_embed: ", is_embed)
     if isinstance(args, tuple):
         position_embeddings = None
         nbatch_pack_offset = None
@@ -106,6 +109,12 @@ def parse_args(args, mtp_enable=False, is_embed=False):
 
     if nbatch_pack_offset is not None:
         nbatch_pack_offset.stop_gradient = True
+
+    print("<parse_args>hidden_states: ", hidden_states)
+    print("<parse_args>attention_mask: ", attention_mask)
+    print("<parse_args>position_ids: ", position_ids)
+    print("<parse_args>position_embeddings: ", position_embeddings)
+    print("<parse_args>nbatch_pack_offset: ", nbatch_pack_offset)
 
     return hidden_states, attention_mask, position_ids, position_embeddings, nbatch_pack_offset
 
@@ -675,6 +684,8 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
 
     @classmethod
     def register_cls_attr(cls, config_class=None, pretrained_model_class=None):
+        print("<register_cls_attr> config_class:", config_class)
+        print("<register_cls_attr> pretrained_model_class:", pretrained_model_class)
         if config_class is not None:
             cls.config_class = config_class
         if pretrained_model_class is not None:
@@ -692,6 +703,7 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
 
     @classmethod
     def _prepare_pipeline_inputs_func(cls, inputs):
+        print("<_prepare_pipeline_inputs_func> inputs:", inputs)
         first_stage_keys = [
             "input_ids",
             "attn_mask_startend_row_indices",
@@ -738,6 +750,8 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
             return ret
 
         if type(inputs) is dict or type(inputs) is OrderedDict:
+            print("<_prepare_pipeline_inputs_func> return 1 first_stage_keys:", first_stage_keys)
+            print("<_prepare_pipeline_inputs_func> return 2 last_stage_keys:", last_stage_keys)
             return [
                 get_expected_keys(inputs, first_stage_keys),
                 get_expected_keys(inputs, last_stage_keys),
@@ -745,6 +759,8 @@ class GeneralModelForCausalLMPipe(PipelinePretrainedModel, PipelineLayer):
 
         keys = list(inputs[0].keys())
         inputs_batch = {key: [data.pop(key) for data in inputs] for key in keys}
+        print("<_prepare_pipeline_inputs_func> return 3 first_stage_keys:", first_stage_keys)
+        print("<_prepare_pipeline_inputs_func> return 4 last_stage_keys:", last_stage_keys)
         return [
             get_expected_keys(inputs_batch, first_stage_keys),
             get_expected_keys(inputs_batch, last_stage_keys),
