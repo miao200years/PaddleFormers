@@ -339,9 +339,13 @@ class EmbeddingPipe(nn.Layer):
                     bias=-1.0,
                     bias_after_scale=False,
                 )
-
+        ggo = {}
         if attention_mask is not None:
             ret += (attention_mask.clone(),)
+            try:
+                ggo["attention_mask"] = attention_mask
+            except:
+                pass
         if position_ids is not None:
             ret += (position_ids.clone(),)
         if position_embeddings is not None:
