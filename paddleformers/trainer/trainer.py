@@ -111,7 +111,10 @@ try:
 except:
     pass
 if TYPE_CHECKING:
-    from transformers.tokenization_utils import PreTrainedTokenizer
+    try:
+        from transformers.tokenization_utils import PreTrainedTokenizer
+    except:
+        from transformers.tokenization_utils import PythonBackend as PreTrainedTokenizer
 
 from ..transformers.context_parallel_utils import (
     auto_split_sequence_dim_load_balance,
