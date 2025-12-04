@@ -1759,7 +1759,7 @@ class Trainer:
             if (
                 not args.enable_auto_parallel
                 and isinstance(train_dataloader, paddle.io.DataLoader)
-                and isinstance(train_dataloader.batch_sampler, (DistributedBatchSampler, NlpDistributedBatchSampler))
+                and isinstance(train_dataloader.batch_sampler, DistributedBatchSampler)
             ):
                 train_dataloader.batch_sampler.set_epoch(epoch)
 
