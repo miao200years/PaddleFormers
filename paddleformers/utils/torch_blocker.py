@@ -109,7 +109,6 @@ class TorchBlocker:
             self._stack.pop()
 
     def _start(self):
-        """开始拦截"""
         builtins.__import__ = self._custom_import
 
     def stop(self):
