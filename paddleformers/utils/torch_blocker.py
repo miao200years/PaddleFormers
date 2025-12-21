@@ -38,6 +38,12 @@ class TorchBlocker:
 
     def _fake_find_spec(self, name, package=None):
         """假的 find_spec，让 transformers 认为 torch 不存在"""
+        for frame_info in traceback.extract_stack():
+            filename = frame_info.filename or ""
+            # print(f">>>>>>>{filename}:{frame_info.lineno}")
+            if "PaddleFormers/tests/" in filename:
+                return self._original_find_spec(name, package)
+            # print(">>",filename)
         if self.block_torch and (name == "torch" or name.startswith("torch.")):
             return None
         return self._original_find_spec(name, package)
@@ -55,11 +61,14 @@ class TorchBlocker:
                 return True
 
         # 2) 通过调用栈的文件路径判断
+        # print("BG")
         for frame_info in traceback.extract_stack():
             filename = frame_info.filename or ""
+            # print(">>",filename)
             if "paddleformers" in filename and "torch_blocker" not in filename:
+                # print("END")
                 return True
-
+        # print("END")
         return False
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
@@ -102,7 +111,7 @@ class TorchBlocker:
             else:
                 for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
-                    print("pop:", module)
+                    # print("pop:",module)
                 for module_name, module in self.torch_module.items():
                     sys.modules[module_name] = module
                 self.torch_module = {}
