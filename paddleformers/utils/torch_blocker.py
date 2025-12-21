@@ -33,8 +33,8 @@ class TorchBlocker:
         # 保存原始函数
         self._original_import = builtins.__import__
         self._original_find_spec = importlib.util.find_spec
-        builtins.__import__ = self._custom_import
-        importlib.util.find_spec = self._fake_find_spec
+        # builtins.__import__ = self._custom_import
+        # importlib.util.find_spec = self._fake_find_spec
 
     def _fake_find_spec(self, name, package=None):
         """假的 find_spec，让 transformers 认为 torch 不存在"""
