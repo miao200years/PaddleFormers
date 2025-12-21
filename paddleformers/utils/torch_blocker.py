@@ -33,8 +33,8 @@ class TorchBlocker:
         # 保存原始函数
         self._original_import = builtins.__import__
         self._original_find_spec = importlib.util.find_spec
-        # builtins.__import__ = self._custom_import
-        # importlib.util.find_spec = self._fake_find_spec
+        builtins.__import__ = self._custom_import
+        importlib.util.find_spec = self._fake_find_spec
 
     def _fake_find_spec(self, name, package=None):
         """假的 find_spec，让 transformers 认为 torch 不存在"""
@@ -69,6 +69,7 @@ class TorchBlocker:
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
+        return self._original_import(name, globals, locals, fromlist, level)
         # 计算完整模块名 full_name
         # print("name", name)
         for frame_info in traceback.extract_stack():
