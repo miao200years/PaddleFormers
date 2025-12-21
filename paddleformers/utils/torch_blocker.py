@@ -69,7 +69,7 @@ class TorchBlocker:
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
-        return self._original_import(name, globals, locals, fromlist, level)
+        # return self._original_import(name, globals, locals, fromlist, level)
         # 计算完整模块名 full_name
         # print("name", name)
         for frame_info in traceback.extract_stack():
