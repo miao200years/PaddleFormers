@@ -17,78 +17,44 @@ import importlib.util
 import sys
 import traceback
 
+# from numba.cuda.printimpl import print_item
+
 
 class TorchBlocker:
     def __init__(self, verbose: bool = True):
-
-        self.verbose = verbose
-
-        self._stack = []
-        self._torch_blocked = False
-        self._torch_backup = {}
-        self._transformers_by_paddleformers = False
-
+        # self.verbose = verbose
+        #
+        # # 状态
+        # self._stack = []
+        self.torch_module = {}
+        self.PF = 0
+        self.PF_RESR = 1
+        self.block_torch = False
+        # 保存原始函数
         self._original_import = builtins.__import__
         self._original_find_spec = importlib.util.find_spec
-
-        self._start()
-
-    def _log(self, msg: str):
-
-        if self.verbose:
-            print(f"[TorchBlocker] {msg}")
+        builtins.__import__ = self._custom_import
+        importlib.util.find_spec = self._fake_find_spec
 
     def _fake_find_spec(self, name, package=None):
-
-        if self._torch_blocked and (name == "torch" or name.startswith("torch.")):
+        """假的 find_spec，让 transformers 认为 torch 不存在"""
+        if self.block_torch and (name == "torch" or name.startswith("torch.")):
             return None
         return self._original_find_spec(name, package)
 
-    def _block_torch(self):
-
-        if self._torch_blocked:
-            return
-
-        self._torch_backup = {}
-        for name in list(sys.modules.keys()):
-            if name == "torch" or name.startswith("torch."):
-                self._torch_backup[name] = sys.modules.pop(name)
-
-        importlib.util.find_spec = self._fake_find_spec
-        self._torch_blocked = True
-        self._log("torch 已屏蔽")
-
-    def _unblock_torch(self):
-
-        if not self._torch_blocked:
-            return
-
-        importlib.util.find_spec = self._original_find_spec
-
-        for name, mod in self._torch_backup.items():
-            sys.modules[name] = mod
-        self._torch_backup = {}
-
-        self._torch_blocked = False
-        self._log("torch 已恢复")
-
-    def _clear_transformers_cache(self):
-
-        to_remove = [
-            name for name in list(sys.modules.keys()) if name == "transformers" or name.startswith("transformers.")
-        ]
-        for name in to_remove:
-            del sys.modules[name]
-        if to_remove:
-            self._log(f"已清除 {len(to_remove)} 个 transformers 模块缓存")
-
     def _is_called_from_paddleformers(self, current_globals) -> bool:
-
+        """
+        判断当前 import 是否出自 paddleformers 代码：
+        - 先看调用方模块名（globals 的 __package__ / __name__）
+        - 再回溯 Python 调用栈中的文件路径
+        """
+        # 1) 通过调用方模块名判断
         if current_globals is not None:
             caller_mod = current_globals.get("__package__") or current_globals.get("__name__", "") or ""
             if caller_mod.startswith("paddleformers"):
                 return True
 
+        # 2) 通过调用栈的文件路径判断
         for frame_info in traceback.extract_stack():
             filename = frame_info.filename or ""
             if "paddleformers" in filename and "torch_blocker" not in filename:
@@ -97,7 +63,9 @@ class TorchBlocker:
         return False
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
-
+        """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
+        # 计算完整模块名 full_name
+        print("name", name)
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
@@ -111,55 +79,60 @@ class TorchBlocker:
 
         top_level = (full_name or "").split(".")[0]
 
+        # 快速路径：与我们无关的模块，完全不干预，避免影响 paddle / tests 等
         if top_level not in ("paddleformers", "transformers", "torch"):
             return self._original_import(name, globals, locals, fromlist, level)
+        # if top_level in ("transformers", "torch"):
+        #     self._stack.append(full_name)
+        # print("<<<in", full_name)
+        if top_level == "paddleformers":
+            for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+                sys.modules.pop(module)
 
-        if self._torch_blocked and top_level == "torch":
-            raise ImportError("torch is blocked (paddleformers mode)")
+        # 如果当前处于 torch 屏蔽模式，禁止任何位置导入 torch
+
+        # 判断当前调用是否来自 paddleformers
 
         from_paddleformers = self._is_called_from_paddleformers(globals)
+        if from_paddleformers is False:
+            if self.PF is False:
+                self.block_torch = False
+                # importlib.util.find_spec = self._original_find_spec
+                # return self._original_import(name, globals, locals, fromlist, level)
+            else:
+                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+                    sys.modules.pop(module)
+                    print("pop:", module)
+                for module_name, module in self.torch_module.items():
+                    sys.modules[module_name] = module
+                self.torch_module = {}
 
-        if top_level == "transformers" and from_paddleformers:
+                # while self._stack:
+                #     module = self._stack.pop()
+                #     try:
+                #
+                #     except:
+                #         pass
+                self.PF = False
+                self.PF_RESR = True
+                self.block_torch = False
+                # importlib.util.find_spec = self._original_find_spec
+        else:
+            self.PF = True
+            if self.PF_RESR is True:
 
-            if not self._torch_blocked:
-                self._block_torch()
-            self._transformers_by_paddleformers = True
-            self._log("transformers 被 paddleformers 导入 (torch 屏蔽中)")
+                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+                    sys.modules.pop(module)
+                    print("pop:", module)
+                for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
+                    module = sys.modules.pop(module_name)
+                    self.torch_module[module_name] = module
 
-        elif top_level == "transformers" and not from_paddleformers:
-            if self._transformers_by_paddleformers or self._torch_blocked:
+                self.PF_RESR = False
+                self.block_torch = True
+                # importlib.util.find_spec = self._fake_find_spec
+            else:
+                self.block_torch = True
+                # importlib.util.find_spec = self._fake_find_spec
 
-                self._log("用户直接 import transformers，切换为正常模式")
-                self._unblock_torch()
-                self._clear_transformers_cache()
-                self._transformers_by_paddleformers = False
-
-        self._stack.append(full_name)
-        try:
-            return self._original_import(name, globals, locals, fromlist, level)
-        finally:
-            self._stack.pop()
-
-    def _start(self):
-
-        builtins.__import__ = self._custom_import
-
-    def stop(self):
-
-        builtins.__import__ = self._original_import
-        self._unblock_torch()
-        self._log("已停止")
-
-    def reset(self):
-
-        self._stack = []
-        self._transformers_by_paddleformers = False
-        self._unblock_torch()
-
-    @property
-    def is_torch_blocked(self) -> bool:
-        return self._torch_blocked
-
-    @property
-    def is_transformers_loaded_by_paddleformers(self) -> bool:
-        return self._transformers_by_paddleformers
+        return self._original_import(name, globals, locals, fromlist, level)
