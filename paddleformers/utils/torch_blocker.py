@@ -15,9 +15,6 @@
 import builtins
 import importlib.util
 import sys
-import traceback
-
-# from numba.cuda.printimpl import print_item
 
 
 class TorchBlocker:
@@ -27,8 +24,8 @@ class TorchBlocker:
         # # 状态
         # self._stack = []
         self.torch_module = {}
-        self.PF = 0
-        self.PF_RESR = 1
+        self.PF = False
+        self.PF_RESR = True
         self.block_torch = False
         # 保存原始函数
         self._original_import = builtins.__import__
@@ -38,9 +35,16 @@ class TorchBlocker:
 
     def _fake_find_spec(self, name, package=None):
         """假的 find_spec，让 transformers 认为 torch 不存在"""
-
-        # print(">>",filename)
+        # 使用 sys._getframe() 避免递归，因为 traceback.extract_stack() 会触发导入
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ""
+            # print(f">>>>>>>{filename}:{frame.f_lineno}")
+            if "PaddleFormers/tests/" in filename:
+                return self._original_find_spec(name, package)
+            frame = frame.f_back
         if self.block_torch and (name == "torch" or name.startswith("torch.")):
+            print(f">>>>>>> name :{name}")
             return None
         return self._original_find_spec(name, package)
 
@@ -58,25 +62,30 @@ class TorchBlocker:
 
         # 2) 通过调用栈的文件路径判断
         # print("BG")
-        for frame_info in traceback.extract_stack():
-            filename = frame_info.filename or ""
+        # 使用 sys._getframe() 避免递归，因为 traceback.extract_stack() 会触发导入
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ""
             # print(">>",filename)
             if "paddleformers" in filename and "torch_blocker" not in filename:
                 # print("END")
                 return True
+            frame = frame.f_back
         # print("END")
         return False
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
-        # return self._original_import(name, globals, locals, fromlist, level)
         # 计算完整模块名 full_name
-        # print("name", name)
-        for frame_info in traceback.extract_stack():
-            filename = frame_info.filename or ""
-            # print(f">>>>>>>{filename}:{frame_info.lineno}")
+        # 使用 sys._getframe() 避免递归，因为 traceback.extract_stack() 会触发导入
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ""
+            # print(f">>>>>>>{filename}:{frame.f_lineno}")
             if "PaddleFormers/tests/" in filename:
                 return self._original_import(name, globals, locals, fromlist, level)
+            frame = frame.f_back
+        # print("name",name)
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
@@ -134,7 +143,7 @@ class TorchBlocker:
 
                 for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
-                    # print("pop:", module)
+                    print("pop:", module)
                 for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
                     module = sys.modules.pop(module_name)
                     self.torch_module[module_name] = module
