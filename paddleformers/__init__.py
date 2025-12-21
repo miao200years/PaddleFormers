@@ -22,7 +22,7 @@ from .utils.lazy_import import _LazyModule
 from .utils.torch_blocker import TorchBlocker
 
 blocker = TorchBlocker()
-blocker._start()
+# blocker._start()
 PADDLEFORMERS_STABLE_VERSION = "PADDLEFORMERS_STABLE_VERSION"
 
 with suppress(Exception):
