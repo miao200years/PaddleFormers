@@ -38,12 +38,8 @@ class TorchBlocker:
 
     def _fake_find_spec(self, name, package=None):
         """假的 find_spec，让 transformers 认为 torch 不存在"""
-        for frame_info in traceback.extract_stack():
-            filename = frame_info.filename or ""
-            # print(f">>>>>>>{filename}:{frame_info.lineno}")
-            if "PaddleFormers/tests/" in filename:
-                return self._original_find_spec(name, package)
-            # print(">>",filename)
+
+        # print(">>",filename)
         if self.block_torch and (name == "torch" or name.startswith("torch.")):
             return None
         return self._original_find_spec(name, package)
@@ -75,6 +71,11 @@ class TorchBlocker:
         """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
         # 计算完整模块名 full_name
         # print("name", name)
+        for frame_info in traceback.extract_stack():
+            filename = frame_info.filename or ""
+            # print(f">>>>>>>{filename}:{frame_info.lineno}")
+            if "PaddleFormers/tests/" in filename:
+                return self._original_import(name, globals, locals, fromlist, level)
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
