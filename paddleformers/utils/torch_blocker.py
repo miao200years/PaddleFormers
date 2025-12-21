@@ -74,7 +74,7 @@ class TorchBlocker:
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
         """自定义 import 函数，只对 paddleformers / transformers / torch 生效"""
         # 计算完整模块名 full_name
-        print("name", name)
+        # print("name", name)
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
@@ -132,7 +132,7 @@ class TorchBlocker:
 
                 for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
-                    print("pop:", module)
+                    # print("pop:", module)
                 for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
                     module = sys.modules.pop(module_name)
                     self.torch_module[module_name] = module
