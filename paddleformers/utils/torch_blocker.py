@@ -38,7 +38,7 @@ class TorchBlocker:
         #     if "PaddleFormers/tests/" in filename:
         #         return self._original_find_spec(name, package)
         #     frame = frame.f_back
-        if self.block_torch and (name == "torch" or name.startswith("torch.")):
+        if self.block_torch and (name == "torch" or name.startswith("torch.") or name.startswith("torchvision")):
             return None
         return self._original_find_spec(name, package)
 
