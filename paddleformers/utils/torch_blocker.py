@@ -54,12 +54,12 @@ class TorchBlocker:
         return False
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
-        # frame = sys._getframe(1)
-        # while frame:
-        #     filename = frame.f_code.co_filename or ""
-        #     if "PaddleFormers/tests/" in filename:
-        #         return self._original_import(name, globals, locals, fromlist, level)
-        #     frame = frame.f_back
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ""
+            if "PaddleFormers/tests/data" in filename:
+                return self._original_import(name, globals, locals, fromlist, level)
+            frame = frame.f_back
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
