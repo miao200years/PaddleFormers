@@ -30,12 +30,6 @@ class TorchBlocker:
         importlib.util.find_spec = self._fake_find_spec
 
     def _fake_find_spec(self, name, package=None):
-        # frame = sys._getframe(1)
-        # while frame:
-        #     filename = frame.f_code.co_filename or ""
-        #     if "PaddleFormers/tests/" in filename:
-        #         return self._original_find_spec(name, package)
-        #     frame = frame.f_back
         if self.block_torch and (name == "torch" or name.startswith("torch.")):
             return None
         return self._original_find_spec(name, package)
