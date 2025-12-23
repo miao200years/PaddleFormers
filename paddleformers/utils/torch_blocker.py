@@ -38,7 +38,7 @@ class TorchBlocker:
         #     if "PaddleFormers/tests/" in filename:
         #         return self._original_find_spec(name, package)
         #     frame = frame.f_back
-        if self.block_torch and (name == "torch" or name.startswith("torch.") or name.startswith("torchvision")):
+        if self.block_torch and name.startswith("torch"):
             return None
         return self._original_find_spec(name, package)
 
@@ -85,7 +85,7 @@ class TorchBlocker:
                 self.torch_module[module_name] = module
             self.torch_transformers_pf = True
 
-        if top_level not in ("transformers", "torch"):
+        if top_level not in ("transformers", "torch", "datasets", "torchvision"):
             return self._original_import(name, globals, locals, fromlist, level)
         # print(">>",top_level)
         # if top_level == "paddleformers" and self.TF == True:
@@ -97,7 +97,9 @@ class TorchBlocker:
             if self.PF is False:
                 self.block_torch = False
             else:
-                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+                for module in [
+                    i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("datasets")
+                ]:
                     sys.modules.pop(module)
                 for module_name, module in self.torch_module.items():
                     sys.modules[module_name] = module
@@ -110,7 +112,9 @@ class TorchBlocker:
             self.PF = True
             self.torch_transformers_pf = True
             if self.PF_RESR is True:
-                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+                for module in [
+                    i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("datasets")
+                ]:
                     sys.modules.pop(module)
                 for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
                     module = sys.modules.pop(module_name)
