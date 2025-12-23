@@ -21,8 +21,10 @@ class TorchBlocker:
     def __init__(self, verbose: bool = True):
         self.torch_module = {}
         self.PF = False
+        self.TF = False
         self.PF_RESR = True
         self.block_torch = False
+        self.torch_transformers_pf = False
         self._original_import = builtins.__import__
         self._original_find_spec = importlib.util.find_spec
 
@@ -30,6 +32,12 @@ class TorchBlocker:
         importlib.util.find_spec = self._fake_find_spec
 
     def _fake_find_spec(self, name, package=None):
+        # frame = sys._getframe(1)
+        # while frame:
+        #     filename = frame.f_code.co_filename or ""
+        #     if "PaddleFormers/tests/" in filename:
+        #         return self._original_find_spec(name, package)
+        #     frame = frame.f_back
         if self.block_torch and (name == "torch" or name.startswith("torch.")):
             return None
         return self._original_find_spec(name, package)
@@ -67,11 +75,23 @@ class TorchBlocker:
 
         top_level = (full_name or "").split(".")[0]
 
-        if top_level not in ("paddleformers", "transformers", "torch"):
-            return self._original_import(name, globals, locals, fromlist, level)
-        if top_level == "paddleformers":
-            for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+        if top_level == "paddleformers" and self.torch_transformers_pf is False:
+            for module in [
+                i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("paddleformers")
+            ]:
                 sys.modules.pop(module)
+            for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
+                module = sys.modules.pop(module_name)
+                self.torch_module[module_name] = module
+            self.torch_transformers_pf = True
+
+        if top_level not in ("transformers", "torch"):
+            return self._original_import(name, globals, locals, fromlist, level)
+        # print(">>",top_level)
+        # if top_level == "paddleformers" and self.TF == True:
+        #     for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
+        #         sys.modules.pop(module)
+        #     self.TF = False
         from_paddleformers = self._is_called_from_paddleformers(globals)
         if from_paddleformers is False:
             if self.PF is False:
@@ -81,12 +101,14 @@ class TorchBlocker:
                     sys.modules.pop(module)
                 for module_name, module in self.torch_module.items():
                     sys.modules[module_name] = module
+                self.torch_transformers_pf = False
                 self.torch_module = {}
                 self.PF = False
                 self.PF_RESR = True
                 self.block_torch = False
         else:
             self.PF = True
+            self.torch_transformers_pf = True
             if self.PF_RESR is True:
                 for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
