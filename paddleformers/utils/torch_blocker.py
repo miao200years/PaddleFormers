@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import builtins
 import importlib.util
 import sys
@@ -56,12 +57,7 @@ class TorchBlocker:
         return False
 
     def _custom_import(self, name, globals=None, locals=None, fromlist=(), level=0):
-        frame = sys._getframe(1)
-        while frame:
-            filename = frame.f_code.co_filename or ""
-            if "PaddleFormers/tests/data" in filename:
-                return self._original_import(name, globals, locals, fromlist, level)
-            frame = frame.f_back
+
         if level > 0 and globals:
             pkg = globals.get("__package__") or globals.get("__name__", "")
             if pkg:
@@ -75,6 +71,17 @@ class TorchBlocker:
 
         top_level = (full_name or "").split(".")[0]
 
+        if top_level not in ("paddleformers", "transformers", "torch", "datasets", "torchvision"):
+            return self._original_import(name, globals, locals, fromlist, level)
+
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ""
+            if "PaddleFormers/tests/data" in filename:
+                return self._original_import(name, globals, locals, fromlist, level)
+            frame = frame.f_back
+
+        # 4. 处理 paddleformers 初始化逻辑
         if top_level == "paddleformers" and self.torch_transformers_pf is False:
             for module in [
                 i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("paddleformers")
@@ -84,9 +91,6 @@ class TorchBlocker:
                 module = sys.modules.pop(module_name)
                 self.torch_module[module_name] = module
             self.torch_transformers_pf = True
-
-        if top_level not in ("transformers", "torch", "datasets", "torchvision"):
-            return self._original_import(name, globals, locals, fromlist, level)
         # print(">>",top_level)
         # if top_level == "paddleformers" and self.TF == True:
         #     for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
