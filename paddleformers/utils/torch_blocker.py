@@ -62,6 +62,7 @@ class TorchBlocker:
                 full_name = name
         else:
             full_name = name
+        print(">>>>", full_name)
 
         top_level = (full_name or "").split(".")[0]
 
