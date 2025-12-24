@@ -34,76 +34,22 @@ import paddle.distributed as dist
 
 from ..utils.import_utils import is_paddlefleet_available
 
-# Conditionally import paddlefleet modules
-if is_paddlefleet_available():
-    from paddlefleet import parallel_state, tensor_parallel
-    from paddlefleet.transformer.enums import ModelType
-    from paddlefleet.transformer.layer import FleetLayer
-    from paddlefleet.utils import get_model_config
+# This module requires paddlefleet to be installed
+if not is_paddlefleet_available():
+    raise ImportError(
+        "paddlefleet is required for model_provider. "
+        "Please install paddlefleet to use this module. "
+        "You can install it with: pip install paddlefleet"
+    )
 
-    try:
-        from paddlefleet.fp8_utils import correct_amax_history_if_needed
-    except ImportError:
-        correct_amax_history_if_needed = None
-else:
-    # Create dummy classes/types when paddlefleet is not available
-    class MockParallelState:
-        def is_initialized(self):
-            return False
+from paddlefleet import parallel_state, tensor_parallel
+from paddlefleet.transformer.enums import ModelType
+from paddlefleet.transformer.layer import FleetLayer
+from paddlefleet.utils import get_model_config
 
-        def initialize_model_parallel(self, *args, **kwargs):
-            pass
-
-        def get_pipeline_model_parallel_world_size(self):
-            return 1
-
-        def get_virtual_pipeline_model_parallel_world_size(self):
-            return None
-
-        def is_pipeline_first_stage(self, *args, **kwargs):
-            return True
-
-        def is_pipeline_last_stage(self, *args, **kwargs):
-            return True
-
-        def get_pipeline_model_parallel_rank(self):
-            return 0
-
-        def get_pipeline_model_parallel_decoder_start(self):
-            return 0
-
-        def get_tensor_model_parallel_rank(self):
-            return 0
-
-        def get_context_parallel_rank(self):
-            return 0
-
-        def get_data_parallel_rank(self):
-            return 0
-
-    class MockTensorParallel:
-        def set_defaults_if_not_set_tensor_model_parallel_attributes(self, param):
-            pass
-
-    class MockModelType:
-        encoder_or_decoder = "encoder_or_decoder"
-        encoder_and_decoder = "encoder_and_decoder"
-
-    class MockFleetLayer:
-        pass
-
-    def mock_get_model_config(model):
-        class MockModelConfig:
-            use_cpu_initialization = False
-            init_model_with_meta_device = False
-
-        return MockModelConfig()
-
-    parallel_state = MockParallelState()
-    tensor_parallel = MockTensorParallel()
-    ModelType = MockModelType()
-    FleetLayer = MockFleetLayer
-    get_model_config = mock_get_model_config
+try:
+    from paddlefleet.fp8_utils import correct_amax_history_if_needed
+except ImportError:
     correct_amax_history_if_needed = None
 
 ModelT = TypeVar("ModelT", bound=FleetLayer)

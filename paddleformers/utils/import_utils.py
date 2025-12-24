@@ -300,7 +300,7 @@ def is_transformers_available() -> bool:
 
 def is_paddlefleet_available() -> bool:
     """check if `paddlefleet` package is installed and can be imported
-    
+
     Returns:
         bool: if `paddlefleet` is available
     """
