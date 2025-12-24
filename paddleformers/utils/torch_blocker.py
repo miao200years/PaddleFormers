@@ -39,7 +39,7 @@ class TorchBlocker:
         #     if "PaddleFormers/tests/" in filename:
         #         return self._original_find_spec(name, package)
         #     frame = frame.f_back
-        if self.block_torch and name.startswith("torch"):
+        if self.block_torch and (name.startswith("torch.") or name == "torch"):
             return None
         return self._original_find_spec(name, package)
 
@@ -71,7 +71,7 @@ class TorchBlocker:
 
         top_level = (full_name or "").split(".")[0]
 
-        if top_level not in ("paddleformers", "transformers", "torch", "datasets", "torchvision"):
+        if top_level not in ("paddleformers", "transformers", "torch"):
             return self._original_import(name, globals, locals, fromlist, level)
 
         frame = sys._getframe(1)
@@ -86,7 +86,7 @@ class TorchBlocker:
                 i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("paddleformers")
             ]:
                 sys.modules.pop(module)
-            for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
+            for module_name in [i for i in sys.modules.keys() if i.startswith("torch.") or i == "torch"]:
                 module = sys.modules.pop(module_name)
                 self.torch_module[module_name] = module
             self.torch_transformers_pf = True
@@ -100,9 +100,7 @@ class TorchBlocker:
             if self.PF is False:
                 self.block_torch = False
             else:
-                for module in [
-                    i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("datasets")
-                ]:
+                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
                 for module_name, module in self.torch_module.items():
                     sys.modules[module_name] = module
@@ -115,11 +113,9 @@ class TorchBlocker:
             self.PF = True
             self.torch_transformers_pf = True
             if self.PF_RESR is True:
-                for module in [
-                    i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("datasets")
-                ]:
+                for module in [i for i in sys.modules.keys() if i.startswith("transformers")]:
                     sys.modules.pop(module)
-                for module_name in [i for i in sys.modules.keys() if i.startswith("torch")]:
+                for module_name in [i for i in sys.modules.keys() if i.startswith("torch.") or i == "torch"]:
                     module = sys.modules.pop(module_name)
                     self.torch_module[module_name] = module
                 self.PF_RESR = False
