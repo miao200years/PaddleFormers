@@ -81,7 +81,6 @@ class TorchBlocker:
                 return self._original_import(name, globals, locals, fromlist, level)
             frame = frame.f_back
 
-        # 4. 处理 paddleformers 初始化逻辑
         if top_level == "paddleformers" and self.torch_transformers_pf is False:
             for module in [
                 i for i in sys.modules.keys() if i.startswith("transformers") or i.startswith("paddleformers")
