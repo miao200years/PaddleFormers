@@ -300,15 +300,11 @@ def is_transformers_available() -> bool:
 
 def is_paddlefleet_available() -> bool:
     """check if `paddlefleet` package is installed and can be imported
+    
     Returns:
         bool: if `paddlefleet` is available
     """
-    try:
-        import paddlefleet  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    return is_package_available("paddlefleet")
 
 
 def install_package(

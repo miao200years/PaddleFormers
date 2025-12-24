@@ -128,12 +128,12 @@ try:
     )
 except:
     pass
-try:
-    if is_paddlefleet_available():
+if is_paddlefleet_available():
+    try:
         from paddlefleet.utils import get_batch_on_this_cp_rank
-    else:
+    except ImportError:
         get_batch_on_this_cp_rank = None
-except:
+else:
     get_batch_on_this_cp_rank = None
 if TYPE_CHECKING:
     from transformers.tokenization_utils import PreTrainedTokenizer
@@ -1829,9 +1829,9 @@ class Trainer:
                 and is_paddlefleet_available()
                 and FleetGPTModel is not None
                 and isinstance(self.model, FleetGPTModel)
+                and get_batch_on_this_cp_rank is not None
             ):
-                if get_batch_on_this_cp_rank is not None:
-                    inputs = get_batch_on_this_cp_rank(inputs)
+                inputs = get_batch_on_this_cp_rank(inputs)
 
             if self.args.ignore_data_skip:
                 self.timers and self.timers("read-data").stop()
