@@ -29,14 +29,18 @@ try:
 except:
     pass
 
-sys.modules["torch_save"] = sys.modules["torch"]
-sys.modules["torch"] = None
 
 try:
-    del sys.modules["torchvison"]
+    import torchvison
+
+    logger.warning(
+        """Due to potential compatibility issues between 'PaddlePaddle' and 'PyTorch' in 'PaddleFormers', 'torchvison' is disabled by default in 'PaddleFormers'. If you need to use the 'torchvison' library, please add "del sys.modules['torchvison']" before using them."""
+    )
 except:
     pass
-
+sys.modules["torch_save"] = sys.modules["torch"]
+sys.modules["torch"] = None
+sys.modules["torchvison"] = None
 from .utils.lazy_import import _LazyModule
 
 PADDLEFORMERS_STABLE_VERSION = "PADDLEFORMERS_STABLE_VERSION"
