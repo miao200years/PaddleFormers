@@ -24,7 +24,7 @@ try:
     import torch
 
     logger.warning(
-        """Because there might be compatibility issues between PaddlePaddle and PyTorch in PaddleFormers, PaddleFormers disables PyTorch. If you need to use PyTorch or the Transformers library, please add "del sys.modules['torch']" before using them."""
+        """Due to potential compatibility issues between PaddlePaddle and PyTorch in PaddleFormers, 'PyTorch' is disabled by default in PaddleFormers. If you need to use the 'PyTorch' or 'Transformers' library, please add "del sys.modules['torch']" before using them."""
     )
 except:
     pass
