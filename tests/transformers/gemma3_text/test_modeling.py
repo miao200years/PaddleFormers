@@ -542,12 +542,10 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch model
-        try:
-            import sys
+        import sys
 
-            del sys.modules["torch"]
-        except:
-            pass
+        sys.modules["torch"] = sys.modules["torch_save"]
+        del sys.modules["transformers"]
         import torch
         from transformers import Gemma3ForCausalLM
 
@@ -563,6 +561,8 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
+        sys.modules["torch"] = None
+        del sys.modules["transformers"]
 
     @require_package("transformers", "torch")
     def test_Gemma3_converter_from_local_dir(self):
@@ -572,12 +572,10 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             from transformers import Gemma3ForCausalLM
 
@@ -601,6 +599,8 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
     @parameterized.expand([("Gemma3TextModel",), ("Gemma3ForCausalLM",)])
     @require_package("transformers", "torch")
@@ -612,12 +612,10 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             import transformers
 
@@ -652,6 +650,8 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
 
 if __name__ == "__main__":

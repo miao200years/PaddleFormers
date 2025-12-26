@@ -484,12 +484,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        try:
-            import sys
+        import sys
 
-            del sys.modules["torch"]
-        except:
-            pass
+        sys.modules["torch"] = sys.modules["torch_save"]
+        del sys.modules["transformers"]
         import torch
         from transformers import Glm4MoeModel
 
@@ -504,6 +502,8 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
                 rtol=1e2,
             )
         )
+        sys.modules["torch"] = None
+        del sys.modules["transformers"]
 
     @require_package("transformers", "torch")
     def test_Glm4Moe_converter_from_local_dir(self):
@@ -513,12 +513,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             from transformers import Glm4MoeModel
 
@@ -541,6 +539,8 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
     @parameterized.expand([("Glm4MoeModel",), ("Glm4MoeForCausalLM",)])
     @require_package("transformers", "torch")
@@ -552,12 +552,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             import transformers
 
@@ -587,6 +585,8 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
 
 if __name__ == "__main__":

@@ -488,12 +488,10 @@ class Phi3CompatibilityTest(unittest.TestCase):
         paddle_model = Phi3Model.from_pretrained(self.torch_model_path, convert_from_hf=True, dtype="float32")
         paddle_model.eval()
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
-        try:
-            import sys
+        import sys
 
-            del sys.modules["torch"]
-        except:
-            pass
+        sys.modules["torch"] = sys.modules["torch_save"]
+        del sys.modules["transformers"]
         import torch
         from transformers import Phi3Model
 
@@ -508,18 +506,18 @@ class Phi3CompatibilityTest(unittest.TestCase):
                 rtol=1e2,
             )
         )
+        sys.modules["torch"] = None
+        del sys.modules["transformers"]
 
     @require_package("transformers", "torch")
     def test_Phi3_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
             input_ids = np.random.randint(100, 200, [1, 20])
 
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             from transformers import Phi3Model
 
@@ -541,6 +539,8 @@ class Phi3CompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
     @parameterized.expand([("Phi3Model",), ("Phi3ForCausalLM",)])
     @require_package("transformers", "torch")
@@ -548,12 +548,10 @@ class Phi3CompatibilityTest(unittest.TestCase):
         pytorch_class_name = pytorch_class_name or class_name
         with tempfile.TemporaryDirectory() as tempdir:
             input_ids = np.random.randint(100, 200, [1, 20])
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
 
             import torch
             import transformers
@@ -583,6 +581,8 @@ class Phi3CompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
 
 if __name__ == "__main__":

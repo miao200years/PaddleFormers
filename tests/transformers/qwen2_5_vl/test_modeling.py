@@ -876,12 +876,10 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(**paddle_inputs)[0]
 
         # 2. forward the torch  model
-        try:
-            import sys
+        import sys
 
-            del sys.modules["torch"]
-        except:
-            pass
+        sys.modules["torch"] = sys.modules["torch_save"]
+        del sys.modules["transformers"]
         import torch
         from transformers import Qwen2_5_VLModel
 
@@ -898,18 +896,18 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
+        sys.modules["torch"] = None
+        del sys.modules["transformers"]
 
     @require_package("transformers", "torch")
     def test_Qwen2_5_VL_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
 
             # 1. forward the torch  model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             from transformers import Qwen2_5_VLModel
 
@@ -936,6 +934,8 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]
 
     @parameterized.expand([("Qwen2_5_VLModel",), ("Qwen2_5_VLForConditionalGeneration",)])
     @require_package("transformers", "torch")
@@ -944,12 +944,10 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tempdir:
 
             # 1. forward the torch model
-            try:
-                import sys
+            import sys
 
-                del sys.modules["torch"]
-            except:
-                pass
+            sys.modules["torch"] = sys.modules["torch_save"]
+            del sys.modules["transformers"]
             import torch
             import transformers
 
@@ -1001,3 +999,5 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            sys.modules["torch"] = None
+            del sys.modules["transformers"]

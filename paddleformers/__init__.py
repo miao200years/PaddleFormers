@@ -28,7 +28,14 @@ try:
     )
 except:
     pass
+
+sys.modules["torch_save"] = sys.modules["torch"]
 sys.modules["torch"] = None
+
+try:
+    del sys.modules["torchvison"]
+except:
+    pass
 
 from .utils.lazy_import import _LazyModule
 
