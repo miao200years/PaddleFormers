@@ -34,6 +34,12 @@ class SerializationTest(TestCase):
     )
     @require_package("torch")
     def test_simple_load(self, dtype: str):
+        try:
+            import sys
+
+            del sys.modules["torch"]
+        except:
+            pass
         import torch
 
         # torch "normal_kernel_cpu" not implemented for 'Char', 'Int', 'Long', so only support float

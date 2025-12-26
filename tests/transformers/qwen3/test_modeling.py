@@ -429,6 +429,12 @@ class Qwen3CompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
+        try:
+            import sys
+
+            del sys.modules["torch"]
+        except:
+            pass
         import torch
         from transformers import Qwen3Model
 
@@ -453,6 +459,12 @@ class Qwen3CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
+            try:
+                import sys
+
+                del sys.modules["torch"]
+            except:
+                pass
             import torch
             from transformers import Qwen3ForCausalLM
 
@@ -512,6 +524,12 @@ class Qwen3CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
+            try:
+                import sys
+
+                del sys.modules["torch"]
+            except:
+                pass
             import torch
             import transformers
 
