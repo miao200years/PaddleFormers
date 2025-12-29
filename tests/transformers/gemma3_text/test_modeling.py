@@ -603,6 +603,8 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
             import torch
             import transformers
 
+            transformers.utils.import_utils.is_torch_available = lambda: True
+
             if pytorch_class_name == "Gemma3TextModel":
                 torch_model_class = getattr(transformers, "Gemma3ForCausalLM")
                 torch_model = torch_model_class.from_pretrained(self.torch_model_path, torch_dtype=torch.float32).model
@@ -634,6 +636,7 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
 
 if __name__ == "__main__":
