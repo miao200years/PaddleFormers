@@ -451,6 +451,10 @@ class GptOssCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
+        import sys
+
+        for m in list(sys.modules):
+            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         import torch
         from transformers import GptOssModel
 
@@ -474,6 +478,10 @@ class GptOssCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
+            import sys
+
+            for m in list(sys.modules):
+                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             from transformers import GptOssModel
 
@@ -496,6 +504,8 @@ class GptOssCompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
+            for m in list(sys.modules):
+                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
     @parameterized.expand([("GptOssModel",), ("GptOssForCausalLM",)])
     @require_package("transformers", "torch")
@@ -507,6 +517,10 @@ class GptOssCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
+            import sys
+
+            for m in list(sys.modules):
+                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             import transformers
 
@@ -536,6 +550,8 @@ class GptOssCompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
+            for m in list(sys.modules):
+                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
 
 if __name__ == "__main__":
