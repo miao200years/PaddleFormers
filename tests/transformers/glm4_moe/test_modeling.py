@@ -484,10 +484,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        import sys
+        # import sys
 
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         import torch
         from transformers import Glm4MoeModel
 
@@ -511,10 +511,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            import sys
+            # import sys
 
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             from transformers import Glm4MoeModel
 
@@ -537,8 +537,8 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
     @parameterized.expand([("Glm4MoeModel",), ("Glm4MoeForCausalLM",)])
     @require_package("transformers", "torch")
@@ -550,10 +550,10 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            import sys
+            # import sys
 
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             import transformers
 
@@ -583,8 +583,8 @@ class Glm4MoeCompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
 
 if __name__ == "__main__":

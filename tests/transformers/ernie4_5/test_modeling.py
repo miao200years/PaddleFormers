@@ -470,10 +470,10 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        import sys
+        # import sys
 
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         import torch
         from transformers import Ernie4_5Model
 
@@ -497,10 +497,10 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            import sys
+            # import sys
 
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             from transformers import Ernie4_5Model
 
@@ -523,8 +523,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
             # 3. forward with fc
             from paddleformers.transformers import Ernie4_5Config, Ernie4_5ForCausalLM
@@ -582,10 +582,10 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            import sys
+            # import sys
 
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             import transformers
 
@@ -615,8 +615,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+            # for m in list(sys.modules):
+            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
 
 if __name__ == "__main__":
