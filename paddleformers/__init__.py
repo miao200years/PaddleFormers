@@ -41,28 +41,18 @@ else:
 # the next line will be replaced by setup.py for release version.
 # [VERSION_INFO]
 
-
 from paddleformers.utils.log import logger
 
 sys.modules["torch"] = None
 import transformers
 
 transformers.utils.import_utils.is_torch_available = lambda: False
+transformers.utils.import_utils.is_torchvision_available = lambda: False
 del sys.modules["torch"]
 logger.warning(
-    """Due to potential compatibility issues between 'PaddlePaddle' and 'PyTorch' in 'PaddleFormers', 'transformers.utils.import_utils.is_torch_available' is set to False by default in 'PaddleFormers'. If you need to use the 'PyTorch' in 'transformers', please add "del sys.modules['transformers']" before using it."""
+    """Due to potential compatibility issues between PaddlePaddle and PyTorch in PaddleFormers, PaddleFormers defaults `transformers.utils.import_utils.is_torch_available` and `transformers.utils.import_utils.is_torchvision_available` to False. If you need to use PyTorch in transformers or torchvision, please add `del sys.modules['transformers']` before using them."""
 )
 
-
-try:
-    import torchvison
-
-    logger.warning(
-        """Due to potential compatibility issues between 'PaddlePaddle' and 'PyTorch' in 'PaddleFormers', 'torchvision' is disabled by default in 'PaddleFormers'. If you need to use the 'torchvision' library, please add "del sys.modules['torchvision']" before using it."""
-    )
-except:
-    pass
-sys.modules["torchvision"] = None
 
 if "datasets" in sys.modules.keys():
 
