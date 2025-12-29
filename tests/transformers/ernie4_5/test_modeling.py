@@ -447,6 +447,9 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         from transformers import Ernie4_5Config, Ernie4_5ForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -456,9 +459,13 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
         )
         model = Ernie4_5ForCausalLM(config)
         model.save_pretrained(cls.torch_model_path)
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_ernie4_5_converter(self):
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
@@ -484,10 +491,14 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                 rtol=1e2,
             )
         )
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_ernie4_5_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
@@ -561,6 +572,7 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     rtol=1e-5,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
     @parameterized.expand([("Ernie4_5Model",), ("Ernie4_5ForCausalLM",)])
     @require_package("transformers", "torch")

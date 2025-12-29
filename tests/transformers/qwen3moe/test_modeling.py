@@ -375,6 +375,9 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         from transformers import Qwen3MoeConfig, Qwen3MoeForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -391,9 +394,13 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
         )
         model = Qwen3MoeForCausalLM(config)
         model.save_pretrained(cls.torch_model_path)
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_Qwen3Moe_converter(self):
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
@@ -420,10 +427,14 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_Qwen3Moe_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
@@ -477,6 +488,7 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
     @parameterized.expand([("Qwen3MoeModel",), ("Qwen3MoeForCausalLM",)])
     @require_package("transformers", "torch")

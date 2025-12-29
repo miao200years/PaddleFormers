@@ -433,6 +433,9 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         from transformers import DeepseekV3Config, DeepseekV3ForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -463,10 +466,14 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
         )
         model = DeepseekV3ForCausalLM(config)
         model.save_pretrained(cls.torch_model_path)
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_DeepseekV3_converter(self):
         # 1. create common input
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         input_ids = np.random.randint(100, 200, [1, 20])
 
         # 2. forward the paddle model
@@ -492,10 +499,14 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
+        transformers.utils.import_utils.is_torch_available = lambda: True
 
     @require_package("transformers", "torch")
     def test_DeepseekV3_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
@@ -524,12 +535,16 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
     @parameterized.expand([("DeepseekV3Model",), ("DeepseekV3ForCausalLM",)])
     @require_package("transformers", "torch")
     def test_DeepseekV3_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
         pytorch_class_name = pytorch_class_name or class_name
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])

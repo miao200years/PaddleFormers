@@ -519,6 +519,9 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         from transformers import Gemma3ForCausalLM, Gemma3TextConfig
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -528,9 +531,13 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
         )
         model = Gemma3ForCausalLM(config)
         model.save_pretrained(cls.torch_model_path)
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_Gemma3Text_converter(self):
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
@@ -558,9 +565,14 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
             )
         )
 
+        transformers.utils.import_utils.is_torch_available = lambda: False
+
     @require_package("transformers", "torch")
     def test_Gemma3_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
@@ -589,6 +601,8 @@ class Gemma3TextCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
     @parameterized.expand([("Gemma3TextModel",), ("Gemma3ForCausalLM",)])
     @require_package("transformers", "torch")

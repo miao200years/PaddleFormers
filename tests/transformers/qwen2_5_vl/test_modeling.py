@@ -821,6 +821,9 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        import transformers
+
+        transformers.utils.import_utils.is_torch_available = lambda: True
         from transformers import Qwen2_5_VLConfig, Qwen2_5_VLForConditionalGeneration
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -862,10 +865,13 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
 
         model = Qwen2_5_VLForConditionalGeneration(config)
         model.save_pretrained(cls.torch_model_path)
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_Qwen2_5_VL_converter(self):
+        import transformers
 
+        transformers.utils.import_utils.is_torch_available = lambda: True
         # 1. forward the paddle model
         from paddleformers.transformers import Qwen2_5_VLModel
 
@@ -892,10 +898,14 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
+        transformers.utils.import_utils.is_torch_available = lambda: False
 
     @require_package("transformers", "torch")
     def test_Qwen2_5_VL_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
+            import transformers
+
+            transformers.utils.import_utils.is_torch_available = lambda: True
 
             # 1. forward the torch  model
             import torch
@@ -924,6 +934,7 @@ class Qwen2_5_VLCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
     @parameterized.expand([("Qwen2_5_VLModel",), ("Qwen2_5_VLForConditionalGeneration",)])
     @require_package("transformers", "torch")
