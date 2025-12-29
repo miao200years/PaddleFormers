@@ -387,10 +387,6 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        # import sys
-
-        # for m in list(sys.modules):
-        # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         import torch
         from transformers import Qwen2MoeModel
 
@@ -415,10 +411,6 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            # import sys
-
-            # for m in list(sys.modules):
-            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             from transformers import Qwen2MoeForCausalLM
 
@@ -467,8 +459,6 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # for m in list(sys.modules):
-            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
     @parameterized.expand([("Qwen2MoeModel",), ("Qwen2MoeForCausalLM",)])
     @require_package("transformers", "torch")
@@ -480,10 +470,6 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            # import sys
-
-            # for m in list(sys.modules):
-            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
             import torch
             import transformers
 
@@ -514,5 +500,3 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # for m in list(sys.modules):
-            # (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
