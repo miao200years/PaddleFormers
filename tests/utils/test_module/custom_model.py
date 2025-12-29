@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 
+for m in list(sys.modules):
+    (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 import torch
 
 from paddleformers.transformers import PretrainedModel
