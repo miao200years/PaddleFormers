@@ -14,6 +14,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
 
@@ -430,6 +431,13 @@ class GptOssCompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        try:
+            for m in sys.modules.keys():
+                if m.startswith("transformers"):
+                    del sys.modules[m]
+            # del sys.modules["transformers"]
+        except:
+            pass
         import transformers
 
         transformers.utils.import_utils.is_torch_available = lambda: True
