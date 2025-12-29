@@ -540,6 +540,8 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
             import torch
             import transformers
 
+            transformers.utils.import_utils.is_torch_available = lambda: True
+
             torch_model_class = getattr(transformers, pytorch_class_name)
             torch_model = torch_model_class.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
             torch_model.eval()
@@ -567,3 +569,4 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False

@@ -532,6 +532,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
             import torch
             import transformers
 
+            transformers.utils.import_utils.is_torch_available = lambda: True
+
             torch_model_class = getattr(transformers, pytorch_class_name)
             torch_model = torch_model_class.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
             torch_model.eval()
@@ -558,6 +560,7 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
+            transformers.utils.import_utils.is_torch_available = lambda: False
 
 
 if __name__ == "__main__":
