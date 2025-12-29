@@ -14,7 +14,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 
@@ -477,8 +476,7 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+
         import torch
         from transformers import DeepseekV3Model
 
@@ -503,8 +501,7 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+
             import torch
             from transformers import DeepseekV3Model
 
@@ -528,8 +525,6 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
 
     @parameterized.expand([("DeepseekV3Model",), ("DeepseekV3ForCausalLM",)])
     @require_package("transformers", "torch")
@@ -541,8 +536,7 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+
             import torch
             import transformers
 
@@ -573,5 +567,3 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            for m in list(sys.modules):
-                (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
