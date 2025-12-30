@@ -46,7 +46,6 @@ from paddleformers.utils.log import logger
 sys.modules["torch"] = None
 sys.modules["torchvision"] = None
 # a = sys.modules
-
 import transformers
 
 transformers.utils.is_torch_available = lambda: False
@@ -87,10 +86,10 @@ import_structure = {module: [] for module in modules}
 import_structure["transformers.tokenizer_utils"] = ["PreTrainedTokenizer"]
 
 if TYPE_CHECKING:
+    from . import datasets  # noqa
     from . import (
         cli,
         data,
-        datasets,
         generation,
         mergekit,
         nn,
