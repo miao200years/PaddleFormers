@@ -46,7 +46,7 @@ from paddleformers.utils.log import logger
 sys.modules["torch"] = None
 sys.modules["torchvision"] = None
 # a = sys.modules
-import datasets  # qa
+# import datasets  # qa
 import transformers
 
 transformers.utils.is_torch_available = lambda: False
