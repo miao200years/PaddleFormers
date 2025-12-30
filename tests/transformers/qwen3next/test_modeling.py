@@ -1,4 +1,4 @@
-# Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 # Copyright 2020 The HuggingFace Team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +14,6 @@
 # limitations under the License.
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 
@@ -23,9 +22,9 @@ import paddle
 from parameterized import parameterized
 
 from paddleformers.transformers import (
-    Qwen2MoeConfig,
-    Qwen2MoeForCausalLM,
-    Qwen2MoeModel,
+    Qwen3NextConfig,
+    Qwen3NextForCausalLM,
+    Qwen3NextModel,
 )
 from tests.testing_utils import require_package
 from tests.transformers.test_configuration_common import ConfigTester
@@ -38,23 +37,32 @@ from tests.transformers.test_modeling_common import (
 )
 
 
-class Qwen2MoeModelTester:
+class Qwen3NextModelTester:
     def __init__(
         self,
         parent,
-        vocab_size=151936,
-        hidden_size=64,
-        num_hidden_layers=2,
+        vocab_size=32000,
+        hidden_size=32,
+        num_experts=16,
+        intermediate_size=64,
+        moe_intermediate_size=64,
+        shared_expert_intermediate_size=64,
+        num_hidden_layers=4,
         num_attention_heads=8,
         num_key_value_heads=8,
+        linear_num_key_heads=4,
+        linear_num_value_heads=8,
+        head_dim=16,
+        linear_key_head_dim=16,
+        linear_value_head_dim=16,
         masked_softmax_fusion=True,
         layer_norm_epsilon=1e-5,
         initializer_range=0.02,
         is_training=True,
         use_cache=False,
-        bos_token_id=151463,
-        pad_token_id=151463,
-        eos_token_id=151463,
+        pad_token_id=0,
+        bos_token_id=1,
+        eos_token_id=2,
         apply_residual_connection_post_layernorm=False,
         hidden_dropout=0.0,
         attention_dropout=0.0,
@@ -65,7 +73,7 @@ class Qwen2MoeModelTester:
         batch_size: int = 2,
         seq_length: int = 10,
         type_sequence_label_size=2,
-        activation_function="gelu",
+        activation_function="silu",
         num_labels=3,
         num_choices=4,
         scope=None,
@@ -74,40 +82,9 @@ class Qwen2MoeModelTester:
         use_labels: bool = False,
         return_dict=False,
     ):
-        self.parent: Qwen2MoeModelTest = parent
-        self.vocab_size = vocab_size
-        self.hidden_size = hidden_size
-        self.num_hidden_layers = num_hidden_layers
-        self.num_attention_heads = num_attention_heads
-        self.num_key_value_heads = num_key_value_heads
-        self.masked_softmax_fusion = masked_softmax_fusion
-        self.layer_norm_epsilon = layer_norm_epsilon
-        self.initializer_range = initializer_range
-        self.is_training = is_training
-        self.use_cache = use_cache
-        self.bos_token_id = bos_token_id
-        self.pad_token_id = pad_token_id
-        self.eos_token_id = eos_token_id
-        self.apply_residual_connection_post_layernorm = apply_residual_connection_post_layernorm
-        self.hidden_dropout = hidden_dropout
-        self.attention_dropout = attention_dropout
-        self.attention_softmax_in_fp32 = attention_softmax_in_fp32
-        self.pretraining_tp = pretraining_tp
-        self.dtype = dtype
-        self.slow_but_exact = slow_but_exact
-
-        self.batch_size = batch_size
-        self.seq_length = seq_length
-        self.type_sequence_label_size = type_sequence_label_size
-        self.activation_function = activation_function
-        self.num_labels = num_labels
-        self.num_choices = num_choices
-        self.scope = scope
-        self.dropout = dropout
-
-        self.use_input_mask = use_input_mask
-        self.use_labels = use_labels
-        self.return_dict = return_dict
+        for key, value in locals().items():
+            if key != "self":
+                setattr(self, key, value)
 
     def prepare_config_and_inputs(self):
         input_ids = ids_tensor([self.batch_size, self.seq_length], self.vocab_size, dtype=paddle.int64)
@@ -127,40 +104,21 @@ class Qwen2MoeModelTester:
         config = self.get_config()
         return config, input_ids, input_mask, sequence_labels, token_labels, choice_labels
 
-    def get_config(self) -> Qwen2MoeConfig:
-        return Qwen2MoeConfig(
-            vocab_size=self.vocab_size,
-            hidden_size=self.hidden_size,
-            num_hidden_layers=self.num_hidden_layers,
-            num_attention_heads=self.num_attention_heads,
-            num_key_value_heads=self.num_key_value_heads,
-            masked_softmax_fusion=self.masked_softmax_fusion,
-            layer_norm_epsilon=self.layer_norm_epsilon,
-            initializer_range=self.initializer_range,
-            use_cache=self.use_cache,
-            bos_token_id=self.bos_token_id,
-            pad_token_id=self.pad_token_id,
-            eos_token_id=self.eos_token_id,
-            apply_residual_connection_post_layernorm=self.apply_residual_connection_post_layernorm,
-            hidden_dropout=self.hidden_dropout,
-            attention_dropout=self.attention_dropout,
-            attention_softmax_in_fp32=self.attention_softmax_in_fp32,
-            pretraining_tp=self.pretraining_tp,
-            dtype=self.dtype,
-            slow_but_exact=self.slow_but_exact,
-            activation_function=self.activation_function,
-        )
+    def get_config(self) -> Qwen3NextConfig:
+        model_args = self.__dict__.copy()
+        model_args.pop("parent")
+        return Qwen3NextConfig(**model_args)
 
     def create_and_check_model(
-        self, config: Qwen2MoeConfig, input_ids, input_mask, sequence_labels, token_labels, choice_labels
+        self, config: Qwen3NextConfig, input_ids, input_mask, sequence_labels, token_labels, choice_labels
     ):
-        model = Qwen2MoeModel(config)
+        model = Qwen3NextModel(config)
         model.eval()
         result = model(input_ids)
         self.parent.assertEqual(result[0].shape, [self.batch_size, self.seq_length, self.hidden_size])
 
-    def create_and_check_model_attention_mask(self, config: Qwen2MoeConfig, input_ids):
-        model = Qwen2MoeModel(config)
+    def create_and_check_model_attention_mask(self, config: Qwen3NextConfig, input_ids):
+        model = Qwen3NextModel(config)
         model.eval()
         attn_mask_2d = random_attention_mask([self.batch_size, self.seq_length])
         result_2d = model(input_ids, attention_mask=attn_mask_2d)[0]
@@ -186,7 +144,7 @@ class Qwen2MoeModelTester:
         choice_labels,
     ):
         config.add_cross_attention = True
-        model = Qwen2MoeModel(config)
+        model = Qwen3NextModel(config)
         model.eval()
         result = model(
             input_ids,
@@ -208,7 +166,7 @@ class Qwen2MoeModelTester:
         token_labels,
         choice_labels,
     ):
-        model = Qwen2MoeForCausalLM(config=config)
+        model = Qwen3NextForCausalLM(config=config)
         model.eval()
         result = model(input_ids, attention_mask=input_mask, labels=token_labels, return_dict=True)
         self.parent.assertEqual(result.logits.shape, [self.batch_size, self.seq_length, self.vocab_size])
@@ -227,7 +185,7 @@ class Qwen2MoeModelTester:
         return config, inputs_dict
 
     def create_and_check_lm_head_model(self, config, input_ids, input_mask, *args):
-        model = Qwen2MoeForCausalLM(config)
+        model = Qwen3NextForCausalLM(config)
         model.eval()
 
         result = model(
@@ -243,7 +201,7 @@ class Qwen2MoeModelTester:
             self.parent.assertEqual(result[0].shape, [self.batch_size, self.seq_length, self.vocab_size])
 
     def check_model_position_ids(self, config, input_ids, input_mask, *args):
-        model = Qwen2MoeForCausalLM(config)
+        model = Qwen3NextForCausalLM(config)
         model.eval()
 
         result_no_position_id = model(
@@ -265,20 +223,20 @@ class Qwen2MoeModelTester:
             self.parent.assertTrue((result_position_id[0] == result_no_position_id[0]).all())
 
 
-class Qwen2MoeModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.TestCase):
-    base_model_class = Qwen2MoeModel
+class Qwen3NextModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.TestCase):
+    base_model_class = Qwen3NextModel
     return_dict = False
     use_labels = False
     use_test_model_name_list = False
 
-    all_model_classes = (Qwen2MoeModel, Qwen2MoeForCausalLM)
-    all_generative_model_classes = {Qwen2MoeForCausalLM: (Qwen2MoeModel, "qwen2_moe")}
+    all_model_classes = (Qwen3NextModel, Qwen3NextForCausalLM)
+    all_generative_model_classes = {Qwen3NextForCausalLM: (Qwen3NextModel, "qwen3_next")}
 
     def setUp(self):
         super().setUp()
 
-        self.model_tester = Qwen2MoeModelTester(self)
-        self.config_tester = ConfigTester(self, config_class=Qwen2MoeConfig, vocab_size=256, hidden_size=24)
+        self.model_tester = Qwen3NextModelTester(self)
+        self.config_tester = ConfigTester(self, config_class=Qwen3NextConfig, vocab_size=256, hidden_size=24)
 
     def _get_input_ids_and_config(self):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
@@ -322,12 +280,31 @@ class Qwen2MoeModelTest(ModelTesterMixin, GenerationTesterMixin, unittest.TestCa
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_for_causal_lm(*config_and_inputs)
 
+    def test_save_load(self):
+        for model_class in self.all_model_classes:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                config, input_dict = self.model_tester.prepare_config_and_inputs_for_common()
+                model = model_class(config)
+                model.save_pretrained(tmpdirname, save_checkpoint_format="flex_checkpoint")
 
-class Qwen2MoeIntegrationTest(unittest.TestCase):
+                model1 = model_class.from_pretrained(tmpdirname, convert_from_hf=True)
+
+                model2 = model_class.from_pretrained(tmpdirname, load_checkpoint_format="flex_checkpoint")
+
+                model_state_1 = model1.state_dict()
+                model_state_2 = model2.state_dict()
+
+                for k, v in model_state_1.items():
+                    md51 = v._md5sum()
+                    md52 = model_state_2[k]._md5sum()
+                    assert md51 == md52
+
+
+class Qwen3NextIntegrationTest(unittest.TestCase):
     def test_model_tiny_logits(self):
         input_ids = [1, 306, 4658, 278, 6593, 310, 2834, 338]
-        model = Qwen2MoeForCausalLM.from_pretrained(
-            "PaddleFormers/tiny-random-qwen2moe", dtype="float32", convert_from_hf=True
+        model = Qwen3NextForCausalLM.from_pretrained(
+            "PaddleFormers/tiny-random-qwen3next", dtype="float32", convert_from_hf=True
         )
         input_ids = paddle.to_tensor([input_ids])
         with paddle.no_grad():
@@ -335,71 +312,62 @@ class Qwen2MoeIntegrationTest(unittest.TestCase):
 
         # Expected mean on dim = -1
         EXPECTED_MEAN = paddle.to_tensor(
-            [[0.00013129, 0.00055262, 0.00041001, 0.00103886, 0.00101127, 0.00109748, 0.00117971, 0.001671118]]
+            [[-0.00205501, 0.00027839, 0.00424480, -0.00688356, 0.00100611, -0.00839691, 0.00667181, 0.00160779]]
         )
         self.assertTrue(paddle.allclose(out.mean(-1), EXPECTED_MEAN, atol=1e-3, rtol=1e-3))
 
         # slicing logits[0, 0, 0:30]
-        EXPECTED_SLICE = paddle.to_tensor([-0.05819187, -0.22854444, -0.01670399, -0.21067668, 0.09893159,
-                                           0.07734174, -0.20733158, -0.07557553, -0.15745537, -0.15629001,
-                                           0.17131621, 0.02966851, 0.20745607, 0.18703115, 0.04797143,
-                                           -0.05834797, -0.49455544, 0.00927463, 0.36364549, -0.11451467,
-                                           0.58765817, -0.16567171, 0.44204327, 0.35513058, 0.14218493,
-                                           0.00553618, 0.15461002, -0.20002352, -0.05449944, -0.10040712])  # fmt: skip
-        self.assertTrue(paddle.allclose(out[0, 0, :30], EXPECTED_SLICE, atol=1e-3, rtol=1e-3))
+        EXPECTED_SLICE = paddle.to_tensor([2.87202048, 0.26276401, -0.80719441, 0.73548907, 1.77654934,
+                                           0.55275565, -0.30633882, -0.14590700, -0.50525594, 1.51723337,
+                                           2.42696047, -0.14693625, -1.74664390, 0.68826008, -1.45081413,
+                                           -0.49273738, 1.14591551, -1.71560407, -1.54047251, 0.56033224,
+                                           0.99398780, -0.45625472, 0.46429783, -0.91559821, -0.71507078,
+                                           -1.16813612, 0.36878633, -3.33972144, 1.14574468, -0.63741481])  # fmt: skip
+        self.assertTrue(paddle.allclose(out[0, 0, :30], EXPECTED_SLICE, atol=1e-2, rtol=1e-2))
 
 
-class Qwen2MoeGenerationD2STest(GenerationD2STestMixin, unittest.TestCase):
-    internal_testing_model = "PaddleFormers/tiny-random-qwen2moe"
+class Qwen3NextGenerationD2STest(GenerationD2STestMixin, unittest.TestCase):
+    internal_testing_model = "PaddleFormers/tiny-random-qwen3next"
 
 
-class Qwen2MoeCompatibilityTest(unittest.TestCase):
+class Qwen3NextCompatibilityTest:
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
-        from transformers import Qwen2MoeConfig, Qwen2MoeForCausalLM
+        from transformers import Qwen3NextConfig, Qwen3NextForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
         cls.torch_model_path = tempfile.TemporaryDirectory().name
-        config = Qwen2MoeConfig(
+        config = Qwen3NextConfig(
             hidden_size=16,
-            intermediate_size=304,
+            intermediate_size=384,
             num_hidden_layers=4,
             num_attention_heads=8,
             num_key_value_heads=2,
-            moe_intermediate_size=256,
-            shared_expert_intermediate_size=512,
+            moe_intermediate_size=192,
             num_experts_per_tok=2,
-            num_experts=4,
+            num_experts=8,
         )
-        model = Qwen2MoeForCausalLM(config)
+        model = Qwen3NextForCausalLM(config)
         model.save_pretrained(cls.torch_model_path)
 
     @require_package("transformers", "torch")
-    def test_Qwen2Moe_converter(self):
+    def test_Qwen3Next_converter(self):
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
         # 2. forward the paddle model
-        from paddleformers.transformers import Qwen2MoeModel
+        from paddleformers.transformers import Qwen3NextModel
 
-        paddle_model = Qwen2MoeModel.from_pretrained(self.torch_model_path, convert_from_hf=True, dtype="float32")
+        paddle_model = Qwen3NextModel.from_pretrained(self.torch_model_path, convert_from_hf=True, dtype="float32")
         paddle_model.eval()
         paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         # 3. forward the torch  model
-        # try:
-        #     sys.modules["torch"] = sys.modules["torch_save"]
-        # except:
-        #     pass
-        # try:
-        #     del sys.modules["transformers"]
-        # except:
-        #     pass
         import torch
-        from transformers import Qwen2MoeModel
+        from transformers import Qwen3NextModel
 
-        torch_model = Qwen2MoeModel.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
+        torch_model = Qwen3NextModel.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
         torch_model.eval()
         torch_logit = torch_model(torch.tensor(input_ids), return_dict=False)[0]
 
@@ -411,42 +379,27 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
-        # sys.modules["torch"] = None
-        # try:
-        #     del sys.modules["transformers"]
-        # except:
-        #     pass
 
     @require_package("transformers", "torch")
-    def test_Qwen2Moe_converter_from_local_dir(self):
+    def test_Qwen3Next_converter_from_local_dir(self):
         with tempfile.TemporaryDirectory() as tempdir:
 
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch  model
-            # try:
-            #     sys.modules["torch"] = sys.modules["torch_save"]
-            # except:
-            #     pass
-            # try:
-            #     del sys.modules["transformers"]
-            # except:
-            #     pass
             import torch
-            from transformers import Qwen2MoeForCausalLM
+            from transformers import Qwen3NextModel
 
-            torch_model = Qwen2MoeForCausalLM.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
+            torch_model = Qwen3NextModel.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
             torch_model.eval()
             torch_model.save_pretrained(tempdir)
             torch_logit = torch_model(torch.tensor(input_ids), return_dict=False)[0]
 
-            # 2. forward the paddle model with fc
-            from paddleformers.transformers import Qwen2MoeConfig, Qwen2MoeForCausalLM
+            # 2. forward the paddle model
+            from paddleformers.transformers import Qwen3NextModel
 
-            paddle_model = Qwen2MoeForCausalLM.from_pretrained(
-                tempdir, convert_from_hf=True, dtype="float32", load_checkpoint_format="flex_checkpoint"
-            )
+            paddle_model = Qwen3NextModel.from_pretrained(tempdir, convert_from_hf=True, dtype="float32")
             paddle_model.eval()
             paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
@@ -459,37 +412,9 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
                 )
             )
 
-            # 3. fuse qkv/ffn with fc
-            model_config = Qwen2MoeConfig.from_pretrained(tempdir)
-            model_config.fuse_attention_qkv = True
-            model_config.fuse_attention_ffn = True
-            paddle_model_fused = Qwen2MoeForCausalLM.from_pretrained(
-                tempdir,
-                config=model_config,
-                convert_from_hf=True,
-                dtype="float32",
-                load_checkpoint_format="flex_checkpoint",
-            )
-            paddle_model_fused.eval()
-            paddle_fused_logit = paddle_model_fused(paddle.to_tensor(input_ids))[0]
-
-            self.assertTrue(
-                np.allclose(
-                    paddle_logit.detach().cpu().reshape([-1])[:9].astype("float32").numpy(),
-                    paddle_fused_logit.detach().cpu().reshape([-1])[:9].astype("float32").numpy(),
-                    atol=1e-2,
-                    rtol=1e-2,
-                )
-            )
-            # sys.modules["torch"] = None
-            # try:
-            #     del sys.modules["transformers"]
-            # except:
-            #     pass
-
-    @parameterized.expand([("Qwen2MoeModel",), ("Qwen2MoeForCausalLM",)])
+    @parameterized.expand([("Qwen3NextModel",), ("Qwen3NextForCausalLM",)])
     @require_package("transformers", "torch")
-    def test_Qwen2Moe_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
+    def test_Qwen3Next_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
         pytorch_class_name = pytorch_class_name or class_name
         with tempfile.TemporaryDirectory() as tempdir:
 
@@ -497,14 +422,8 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
             input_ids = np.random.randint(100, 200, [1, 20])
 
             # 2. forward the torch model
-            # try:
-            #     sys.modules["torch"] = sys.modules["torch_save"]
-            # except:
-            #     pass
-            # try:
-            #     del sys.modules["transformers"]
-            # except:
-            #     pass
+            import sys
+
             import torch
 
             for m in list(sys.modules):
@@ -525,7 +444,7 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
             paddle_model = paddle_model_class.from_pretrained(tempdir, convert_from_hf=True, dtype="float32")
             paddle_model.eval()
 
-            if class_name == "Qwen2MoeModel":
+            if class_name == "Qwen3NextModel":
                 paddle_logit = paddle_model(paddle.to_tensor(input_ids), return_dict=False)[0]
             else:
                 paddle_logit = paddle_model(paddle.to_tensor(input_ids), return_dict=True).logits
@@ -538,8 +457,7 @@ class Qwen2MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # sys.modules["torch"] = None
-            # try:
-            #     del sys.modules["transformers"]
-            # except:
-            #     pass
+
+
+if __name__ == "__main__":
+    unittest.main()
