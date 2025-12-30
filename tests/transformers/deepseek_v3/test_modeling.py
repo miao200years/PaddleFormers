@@ -433,6 +433,8 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
+        for m in list(sys.modules):
+            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         from transformers import DeepseekV3Config, DeepseekV3ForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -466,6 +468,8 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
 
     @require_package("transformers", "torch")
     def test_DeepseekV3_converter(self):
+        for m in list(sys.modules):
+            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
@@ -510,6 +514,8 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
 
     @require_package("transformers", "torch")
     def test_DeepseekV3_converter_from_local_dir(self):
+        for m in list(sys.modules):
+            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         with tempfile.TemporaryDirectory() as tempdir:
 
             # 1. create common input
@@ -556,6 +562,8 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
     @parameterized.expand([("DeepseekV3Model",), ("DeepseekV3ForCausalLM",)])
     @require_package("transformers", "torch")
     def test_DeepseekV3_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
+        for m in list(sys.modules):
+            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         pytorch_class_name = pytorch_class_name or class_name
         with tempfile.TemporaryDirectory() as tempdir:
 
