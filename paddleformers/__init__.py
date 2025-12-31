@@ -45,14 +45,12 @@ from paddleformers.utils.log import logger
 
 sys.modules["torch"] = None
 sys.modules["torchvision"] = None
-# a = sys.modules
-# import datasets  # qa
-import transformers
+import transformers  # qa
 
-transformers.utils.is_torch_available = lambda: False
-transformers.testing_utils.is_torch_available = lambda: False
-transformers.utils.import_utils.is_torch_available = lambda: False
-transformers.utils.import_utils._torchcodec_available = lambda: False
+# transformers.utils.is_torch_available = lambda: False
+# transformers.testing_utils.is_torch_available = lambda: False
+# transformers.utils.import_utils.is_torch_available = lambda: False
+# transformers.utils.import_utils._torchcodec_available = lambda: False
 
 del sys.modules["torch"]
 logger.warning(
@@ -90,6 +88,7 @@ import_structure["transformers.tokenizer_utils"] = ["PreTrainedTokenizer"]
 
 if TYPE_CHECKING:
     from . import datasets  # noqa
+    from . import transformers  # noqa
     from . import (
         cli,
         data,
@@ -100,7 +99,6 @@ if TYPE_CHECKING:
         peft,
         quantization,
         trainer,
-        transformers,
         trl,
         utils,
         version,
