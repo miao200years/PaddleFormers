@@ -14,7 +14,7 @@
 # limitations under the License.
 from __future__ import annotations
 
-import sys
+# import sys
 import tempfile
 import unittest
 
@@ -448,8 +448,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
     @classmethod
     @require_package("transformers", "torch")
     def setUpClass(cls) -> None:
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        #     (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         from transformers import Ernie4_5Config, Ernie4_5ForCausalLM
 
         # when python application is done, `TemporaryDirectory` will be free
@@ -462,8 +462,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
 
     @require_package("transformers", "torch")
     def test_ernie4_5_converter(self):
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        #     (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
@@ -505,8 +505,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
 
     @require_package("transformers", "torch")
     def test_ernie4_5_converter_from_local_dir(self):
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        #     (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         with tempfile.TemporaryDirectory() as tempdir:
 
             # 1. create common input
@@ -598,8 +598,8 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
     @parameterized.expand([("Ernie4_5Model",), ("Ernie4_5ForCausalLM",)])
     @require_package("transformers", "torch")
     def test_ernie4_5_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
-        for m in list(sys.modules):
-            (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
+        # for m in list(sys.modules):
+        #     (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
         pytorch_class_name = pytorch_class_name or class_name
         with tempfile.TemporaryDirectory() as tempdir:
 
