@@ -93,27 +93,6 @@ class PreTrainingArguments(AutoTrainingArguments):
         metadata={"help": "Control the num of microbatches in one pp step."},
     )
 
-    recompute: bool = field(
-        default=False,
-        metadata={
-            "help": "Recompute the forward pass to calculate gradients. Used for saving memory. "
-            "Only support for networks with transformer blocks."
-        },
-    )
-    refined_recompute: str = field(
-        default="",
-        metadata={
-            "help": "The refined recompute parameter is designed to optimize the balance between GPU memory usage and computational speed.\n"
-            "An example configuration could be: `attention_column_ln:-1,attention_row_ln:-1,flash_attn:-1,mlp_column_ln:5,mlp_row_ln:-1`.\n"
-            "The supported parameters for refining recompute are `attention_column_ln`, `attention_row_ln`, `flash_attn`, `mlp_column_ln`, and `mlp_row_ln`.\n"
-            "The associated number, `skip_num`, determines how many times to bypass recomputation for the specified operation.\n"
-            "A `skip_num` of `-1` indicates no recomputation across all stages, maximizing memory usage;\n"
-            "A `skip_num` of `0` enforces recomputation at every stage, minimizing memory usage.\n"
-            "You can also set `skip_num` to a value within the range [1, ..., num_layers]. If `skip_num` exceeds `num_layers`, it will behave as if set to `-1`.\n"
-            "If a parameter is omitted, it defaults to `xxx:0`."
-        },
-    )
-
     def __post_init__(self):
         super().__post_init__()
         assert self.enable_auto_parallel
@@ -132,44 +111,6 @@ class PreTrainingArguments(AutoTrainingArguments):
             self.evaluation_strategy = IntervalStrategy.NO
 
         logger.info(self.strategy)
-        self.unified_checkpoint = False
-        # arse_refined_recompute string to dict
-        if self.refined_recompute in [None, ""]:
-            self.refined_recompute = dict()
-        else:
-            refined_recompute_dict = {
-                "mlp_row_ln": 0,
-                "attention_row_ln": 0,
-                "attention_column_ln": 0,
-                "mlp_column_ln": 0,
-                "flash_attn": 0,
-                "global": 0,
-            }
-            ops = self.refined_recompute.split(",")
-            enable_rr = False
-            for op in ops:
-                op = op.strip()
-                if ":" not in op:
-                    raise ValueError("Illegal refined_recompute input, please check.")
-                op_name, skip_num = op.split(":")[0], int(op.split(":")[1])
-                if op_name not in refined_recompute_dict:
-                    raise ValueError(f"Refined recompute do not support {op_name}, please check.")
-                if (
-                    op_name in ["mlp_row_ln", "attention_row_ln", "attention_column_ln", "mlp_column_ln"]
-                    and self.tensor_model_parallel_size <= 1
-                ):
-                    logger.warning(
-                        f"Refined recompute is only supported for the `{op_name}` operation when `tensor_model_parallel_size` is greater than 1. \
-                            This refined recompute operation will be ignored."
-                    )
-                    continue
-
-                refined_recompute_dict[op_name] = skip_num
-                if skip_num != 0:
-                    enable_rr = True
-            if not enable_rr:
-                refined_recompute_dict = dict()
-            self.refined_recompute = refined_recompute_dict
 
 
 @dataclass
@@ -428,11 +369,11 @@ def init_seed(seed: int = 1234, args=None):
                 order = ["dp", "sharding", "pp", "mp", "sep"]
             if args.context_parallel_size is not None and args.context_parallel_size > 1:
                 sep_degree = args.context_parallel_size
-            elif args.sep_parallel_size is not None and args.sep_parallel_size > 1:
-                sep_degree = args.sep_parallel_size
+            elif args.sep_parallel_degree is not None and args.sep_parallel_degree > 1:
+                sep_degree = args.sep_parallel_degree
             else:
                 sep_degree = 1
-            sep_degree = args.sep_parallel_size if args.sep_parallel_size > 1 else args.context_parallel_size
+            sep_degree = args.sep_parallel_degree if args.sep_parallel_degree > 1 else args.context_parallel_size
             topo = Topology(
                 dist.get_rank(),
                 dist.get_world_size(),
@@ -471,14 +412,14 @@ def main():
     do_enable_mp_async_allreduce = (
         training_args.enable_auto_parallel
         and training_args.tensor_model_parallel_size > 1
-        and training_args.mp_async_allreduce
+        and "enable_mp_async_allreduce" in training_args.tensor_parallel_config
         and not training_args.sequence_parallel
     )
     do_enable_sp_async_reduce_scatter = (
         training_args.enable_auto_parallel
         and training_args.tensor_model_parallel_size > 1
         and training_args.sequence_parallel
-        and training_args.sp_async_reduce_scatter
+        and "enable_sp_async_reduce_scatter" in training_args.tensor_parallel_config
     )
     if (
         do_enable_linear_fused_grad_add or do_enable_mp_async_allreduce or do_enable_sp_async_reduce_scatter
@@ -567,9 +508,9 @@ def main():
     config.use_recompute = training_args.recompute
     config.tensor_model_parallel_size = training_args.tensor_model_parallel_size
     config.tensor_parallel_rank = training_args.tensor_parallel_rank
-    config.sharding_parallel_size = training_args.sharding_parallel_size
+    config.sharding_parallel_degree = training_args.sharding_parallel_degree
     config.to_static = training_args.to_static
-    config.sep_parallel_size = training_args.sep_parallel_size
+    config.sep_parallel_degree = training_args.sep_parallel_degree
     config.context_parallel_size = training_args.context_parallel_size
 
     if training_args.strategy.pipeline.enable and config.virtual_pipeline_model_parallel_size > 1:
@@ -589,7 +530,7 @@ def main():
     print("Final pre-training config:", config)
 
     if (
-        training_args.replace_with_parallel_cross_entropy
+        "replace_with_parallel_cross_entropy" in training_args.tensor_parallel_config
         and config.tensor_model_parallel_size > 1
         and config.to_static is False
     ):
