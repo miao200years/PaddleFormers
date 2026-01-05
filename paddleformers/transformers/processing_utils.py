@@ -226,10 +226,10 @@ class PaddleProcessorMixin:
         else:
             proper_class = self.get_possibly_dynamic_module(class_name)
 
-        if not isinstance(argument, proper_class):
-            raise TypeError(
-                f"Received a {type(argument).__name__} for argument {argument_name}, but a {class_name} was expected."
-            )
+        # if not isinstance(argument, proper_class):
+        #     raise TypeError(
+        #         f"Received a {type(argument).__name__} for argument {argument_name}, but a {class_name} was expected."
+        #     )
 
         return proper_class
 
