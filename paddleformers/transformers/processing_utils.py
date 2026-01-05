@@ -34,7 +34,7 @@ from transformers.processing_utils import (
 from transformers.processing_utils import ProcessingKwargs as ProcessingKwargs_hf
 from transformers.processing_utils import ProcessorMixin as ProcessorMixin_hf
 from transformers.processing_utils import transformers_module
-from transformers.utils import (
+from transformers.utils import (  # PushToHubMixin,
     CHAT_TEMPLATE_FILE,
     LEGACY_PROCESSOR_CHAT_TEMPLATE_FILE,
     PROCESSOR_NAME,
