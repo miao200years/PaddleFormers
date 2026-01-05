@@ -43,9 +43,6 @@ else:
 
 from paddleformers.utils.log import logger
 
-for i in sys.modules.keys():
-    if "torch" in i:
-        print(i, sys.modules[i])
 if "torch" not in sys.modules:
     sys.modules["torch"] = None
     sys.modules["torchvision"] = None
