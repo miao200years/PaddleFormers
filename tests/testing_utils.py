@@ -292,7 +292,7 @@ def require_package(*package_names):
         for package_name in package_names:
             if not is_package_available(package_name):
                 return unittest.skip(f"package<{package_name}> not found, so to skip this test")(func)
-            if package_name == "transformers":
+            if package_name == "transformers" and ("torch" not in sys.modules or sys.modules["torch"] is None):
                 for m in list(sys.modules):
                     (m == "transformers" or m.startswith("transformers.")) and sys.modules.pop(m, None)
                 import transformers.utils.import_utils as import_utils_hf
