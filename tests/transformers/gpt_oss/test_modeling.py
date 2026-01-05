@@ -478,7 +478,7 @@ class GptOssCompatibilityTest(unittest.TestCase):
                 rtol=1e2,
             )
         )
-        # sys.modules["torch"] = None
+
         # try:
         #     del sys.modules["transformers"]
         # except:
@@ -524,7 +524,7 @@ class GptOssCompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:
@@ -579,7 +579,7 @@ class GptOssCompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:

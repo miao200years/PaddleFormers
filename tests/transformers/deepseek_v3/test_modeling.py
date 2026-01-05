@@ -505,7 +505,6 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
             )
         )
 
-        # sys.modules["torch"] = None
         # try:
         #     del sys.modules["transformers"]
         # except:
@@ -552,7 +551,7 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:
@@ -608,7 +607,7 @@ class DeepseekV3CompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:

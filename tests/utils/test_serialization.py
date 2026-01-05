@@ -73,7 +73,7 @@ class SerializationTest(TestCase):
                     paddle.to_tensor(arr).cast("float32").cpu().numpy(),
                     torch_data[key].detach().cpu().to(torch.float32).numpy(),
                 )
-        # sys.modules["torch"] = None
+
         # try:
         #     del sys.modules["transformers"]
         # except:

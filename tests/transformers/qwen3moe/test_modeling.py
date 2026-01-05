@@ -433,7 +433,7 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
                 rtol=1e-2,
             )
         )
-        # sys.modules["torch"] = None
+
         # try:
         #     del sys.modules["transformers"]
         # except:
@@ -505,7 +505,7 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
                     rtol=1e-2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:
@@ -562,7 +562,6 @@ class Qwen3MoeCompatibilityTest(unittest.TestCase):
                 )
             )
 
-            # sys.modules["torch"] = None
             # try:
             #     del sys.modules["transformers"]
             # except:

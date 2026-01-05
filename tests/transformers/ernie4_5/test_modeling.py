@@ -497,7 +497,7 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                 rtol=1e2,
             )
         )
-        # sys.modules["torch"] = None
+
         # try:
         #     del sys.modules["transformers"]
         # except:
@@ -543,7 +543,7 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     rtol=1e2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:
@@ -644,7 +644,7 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     atol=1e2,
                 )
             )
-            # sys.modules["torch"] = None
+
             # try:
             #     del sys.modules["transformers"]
             # except:

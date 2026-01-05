@@ -33,7 +33,6 @@ class CustomModel(PretrainedModel):
         #     pass
 
         self.linear = torch.nn.Linear(config.hidden_size, config.hidden_size)
-        # sys.modules["torch"] = None
 
     def forward(self, x):
         return self.linear(x)
