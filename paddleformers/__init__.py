@@ -43,16 +43,25 @@ else:
 
 from paddleformers.utils.log import logger
 
-sys.modules["torch"] = None
-sys.modules["torchvision"] = None
-import transformers  # qa
+for i in sys.modules.keys():
+    if "torch" in i:
+        print(i, sys.modules[i])
+if "torch" not in sys.modules:
+    sys.modules["torch"] = None
+    sys.modules["torchvision"] = None
+    import transformers  # qa
+
+    del sys.modules["torch"]
+else:
+    import transformers  # qa
+
 
 # transformers.utils.is_torch_available = lambda: False
 # transformers.testing_utils.is_torch_available = lambda: False
 # transformers.utils.import_utils.is_torch_available = lambda: False
 # transformers.utils.import_utils._torchcodec_available = lambda: False
 
-del sys.modules["torch"]
+
 logger.warning(
     """Due to potential compatibility issues between PaddlePaddle and PyTorch in PaddleFormers, PaddleFormers defaults `transformers.utils.import_utils.is_torch_available` and `transformers.utils.import_utils.is_torchvision_available` to False. If you need to use PyTorch in transformers or torchvision, please add `del sys.modules['transformers']` before using them."""
 )
