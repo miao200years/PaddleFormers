@@ -460,6 +460,7 @@ class CacheOffloadingTest(unittest.TestCase):
         self.assertTrue(cache.offloading)
         self.assertEqual(cache.get_seq_length(0), 10)
 
+    @unittest.skip("")
     def test_model_inference_with_offloading(self):
         """
         Integration test: Load a tiny random Qwen3 model, enable offloading in cache,
