@@ -24,7 +24,18 @@ from itertools import islice
 # Add this for extremely slow connection to hf sever even for local dataset.
 os.environ["HF_UPDATE_DOWNLOAD_COUNTS"] = "False"
 
-import datasets
+import importlib
+from functools import partial
+
+PADDLEFORMERS_TESTING = os.environ.get("PADDLEFORMERS_TESTING", False)
+if "torch" not in sys.modules and not PADDLEFORMERS_TESTING:
+    sys.modules["torch"] = None
+    import datasets
+
+    del sys.modules["torch"]
+else:
+    import datasets
+
 from multiprocess import Pool, RLock
 
 import paddleformers
@@ -34,8 +45,6 @@ try:
 except Exception:
     warnings.warn("paddle.distributed is not contains in you paddle!")
 
-import importlib
-from functools import partial
 
 from paddle.io import Dataset, IterableDataset
 from paddle.utils.download import _get_unique_endpoints
@@ -55,25 +64,9 @@ def load_from_ppnlp(path, *args, **kwargs):
     new_path = os.path.split(path)[-1]
     new_path = os.path.join(ppnlp_path, "hf_datasets", new_path + ".py")
     if os.path.exists(new_path):
-        try:
-            torch_s = sys.modules["torch"]
-            del sys.modules["torch"]
-        except:
-            torch_s = None
-        res = origin_load_dataset(new_path, trust_remote_code=True, *args, **kwargs)
-        sys.modules["torch"] = torch_s
-        return res
+        return origin_load_dataset(new_path, trust_remote_code=True, *args, **kwargs)
     else:
-        try:
-
-            torch_s = sys.modules["torch"]
-            del sys.modules["torch"]
-        except:
-            torch_s = None
-
-        res = origin_load_dataset(path, trust_remote_code=True, *args, **kwargs)
-        sys.modules["torch"] = torch_s
-        return res
+        return origin_load_dataset(path, trust_remote_code=True, *args, **kwargs)
 
 
 datasets.load_dataset = load_from_ppnlp
