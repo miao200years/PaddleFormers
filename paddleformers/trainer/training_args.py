@@ -1679,17 +1679,29 @@ class TrainingArguments:
         self._post_init_parallel_degree()
 
         # check recompute
-        if not isinstance(self.recompute_modules, list) and not not isinstance(self.recompute_modules, dict):
-            raise ValueError("recompute_modules must be list or dict")
+        if (
+            self.recompute_modules is not None
+            and not isinstance(self.recompute_modules, list)
+            and not isinstance(self.recompute_modules, dict)
+        ):
+            raise ValueError("recompute_modules must be list, dict or None")
         # check recompute:
-        if not isinstance(self.recompute_mtp_modules, list) and not not isinstance(self.recompute_mtp_modules, dict):
-            raise ValueError("recompute_mtp_modules must be list or dict")
+        if (
+            self.recompute_mtp_modules is not None
+            and not isinstance(self.recompute_mtp_modules, list)
+            and not isinstance(self.recompute_mtp_modules, dict)
+        ):
+            raise ValueError("recompute_mtp_modules must be list, dict or None")
 
+        if getattr(self, "moe_subbatch_token_num_before_dispatch", 0) > 0 and self.recompute_granularity == "full":
+            raise ValueError(
+                "When moe_subbatch_token_num_before_dispatch > 0, please set recompute_granularity='selective and add corresponding module name to recompute_modules"
+            )
         self._post_init_save_checkpoint_format()
         self._post_init_load_checkpoint_format()
         if self.tensorwise_offload_optimizer and self.data_parallel_size > 1:
             raise NotImplementedError(
-                f"Optimizer offload is not supported under data parallel. Please use sharding by setting --sharding stage1 --sharding_parallel_size {self.sharding_parallel_size * self.data_parallel_size}."
+                f"Optimizer offload is not supported under data parallel. Please use sharding by setting --sharding stage1 --sharding_parallel_size {self.sharding_parallel_size*self.data_parallel_size}."
             )
 
         if self.to_static:
@@ -2522,8 +2534,6 @@ class TrainingArguments:
             logger.info(f"Auto set hybrid_parallel_expert_grad_scale = {self.hybrid_parallel_expert_grad_scale}")
         else:
             logger.info(f"Set hybrid_parallel_expert_grad_scale = {self.hybrid_parallel_expert_grad_scale}")
-        # print("self.sharding_parallel_size",self.sharding_parallel_size)
-        # raise
 
     def _post_init_parallel_degree(self):
         self.use_hybrid_parallel = False
