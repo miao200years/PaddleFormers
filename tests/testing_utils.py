@@ -18,8 +18,6 @@ import gc
 import inspect
 import json
 import os
-
-os.environ["PADDLEFORMERS_TESTING"] = "TRUE"
 import subprocess
 import sys
 import unittest
