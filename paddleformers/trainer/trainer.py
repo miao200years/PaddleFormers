@@ -232,7 +232,14 @@ DEFAULT_CALLBACKS = [DefaultFlowCallback]
 DEFAULT_PROGRESS_CALLBACK = ProgressCallback
 
 if is_datasets_available():
-    import datasets
+    PADDLEFORMERS_TESTING = os.environ.get("PADDLEFORMERS_TESTING", False)
+    if "torch" not in sys.modules and not PADDLEFORMERS_TESTING:
+        sys.modules["torch"] = None
+        import datasets
+
+        del sys.modules["torch"]
+    else:
+        import datasets
 
 from paddle.distributed import in_auto_parallel_align_mode
 from paddle.distributed.fleet.utils import mix_precision_utils

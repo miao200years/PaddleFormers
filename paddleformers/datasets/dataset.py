@@ -27,7 +27,15 @@ os.environ["HF_UPDATE_DOWNLOAD_COUNTS"] = "False"
 import importlib
 from functools import partial
 
-import datasets
+PADDLEFORMERS_TESTING = os.environ.get("PADDLEFORMERS_TESTING", False)
+if "torch" not in sys.modules and not PADDLEFORMERS_TESTING:
+    sys.modules["torch"] = None
+    import datasets
+
+    del sys.modules["torch"]
+else:
+    import datasets
+
 import paddle.distributed as dist
 from multiprocess import Pool, RLock
 from paddle.io import Dataset, IterableDataset
@@ -50,25 +58,9 @@ def load_from_ppnlp(path, *args, **kwargs):
     new_path = os.path.split(path)[-1]
     new_path = os.path.join(ppnlp_path, "hf_datasets", new_path + ".py")
     if os.path.exists(new_path):
-        try:
-            torch_s = sys.modules["torch"]
-            del sys.modules["torch"]
-        except:
-            torch_s = None
-        res = origin_load_dataset(new_path, trust_remote_code=True, *args, **kwargs)
-        sys.modules["torch"] = torch_s
-        return res
+        return origin_load_dataset(new_path, trust_remote_code=True, *args, **kwargs)
     else:
-        try:
-
-            torch_s = sys.modules["torch"]
-            del sys.modules["torch"]
-        except:
-            torch_s = None
-
-        res = origin_load_dataset(path, trust_remote_code=True, *args, **kwargs)
-        sys.modules["torch"] = torch_s
-        return res
+        return origin_load_dataset(path, trust_remote_code=True, *args, **kwargs)
 
 
 datasets.load_dataset = load_from_ppnlp
