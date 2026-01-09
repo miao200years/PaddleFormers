@@ -41,7 +41,7 @@ from ...utils.log import logger
 from ..cache_utils import Cache, DynamicCache
 
 try:
-    from paddleformers.transformers.gpt_provider import GPTModelProvider
+    from ..gpt_provider import GPTModelProvider
 except:
     GPTModelProvider = None
 from ..masking_utils import (
