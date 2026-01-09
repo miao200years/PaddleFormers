@@ -22,7 +22,10 @@ from typing import Callable, List, Optional, Union
 import paddle
 import paddle.nn.functional as F
 
-from paddleformers.transformers.gpt_provider import GPTModelProvider
+try:
+    from paddleformers.transformers.gpt_provider import GPTModelProvider
+except:
+    GPTModelProvider = None
 
 logger = logging.getLogger(__name__)
 

@@ -24,7 +24,10 @@ from paddle.distributed.fleet.utils import recompute
 from paddle.distributed.fleet.utils.sequence_parallel_utils import GatherOp, ScatterOp
 from paddle.nn import functional as F
 
-from paddleformers.transformers.gpt_provider import GPTModelProvider
+try:
+    from paddleformers.transformers.gpt_provider import GPTModelProvider
+except:
+    GPTModelProvider = None
 
 from ...nn.attention.interface import ALL_ATTENTION_FUNCTIONS
 from ...nn.attention.utils import repeat_kv
