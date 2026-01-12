@@ -103,7 +103,7 @@ class _LazyModule(ModuleType):
         try:
             import transformers.utils.import_utils as import_utils_hf
 
-            if hasattr(import_utils_hf, "_torchcodec_available") and not PADDLEFORMERS_TESTING:
+            if hasattr(import_utils_hf, "_torchcodec_available"):
                 import_utils_hf._torchcodec_available = False
             return importlib.import_module(f".{module_name}", self.__name__)
         except Exception as e:
