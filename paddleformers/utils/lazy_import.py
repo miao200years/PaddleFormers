@@ -20,6 +20,8 @@ from itertools import chain
 from types import ModuleType
 from typing import Any, Dict, List, Optional
 
+PADDLEFORMERS_TESTING = os.environ.get("PADDLEFORMERS_TESTING", False)
+
 
 class _LazyModule(ModuleType):
     """
@@ -101,7 +103,7 @@ class _LazyModule(ModuleType):
         try:
             import transformers.utils.import_utils as import_utils_hf
 
-            if hasattr(import_utils_hf, "_torchcodec_available"):
+            if hasattr(import_utils_hf, "_torchcodec_available") and not PADDLEFORMERS_TESTING:
                 import_utils_hf._torchcodec_available = False
             return importlib.import_module(f".{module_name}", self.__name__)
         except Exception as e:
