@@ -39,7 +39,11 @@ from ...nn.norm import Norm as GeneralNorm
 from ...nn.pp_model import GeneralModelForCausalLMPipe
 from ...utils.log import logger
 from ..cache_utils import Cache, DynamicCache
-from ..gpt_provider import GPTModelProvider
+
+try:
+    from ..gpt_provider import GPTModelProvider
+except:
+    GPTModelProvider = object
 from ..masking_utils import (
     create_causal_mask_and_row_indices,
     create_sliding_window_causal_mask_and_row_indices,
