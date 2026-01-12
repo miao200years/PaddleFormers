@@ -23,6 +23,8 @@ import unittest
 import paddle
 import yaml
 
+os.environ["FLAGS_tcp_store_using_libuv"] = "0"
+
 TRAIN_PATH = "./examples"
 CONFIG_PATH = "./examples/config/sft"
 LOG_PATH = "./model_unittest_logs"
