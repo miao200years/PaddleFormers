@@ -27,7 +27,7 @@ from paddle.nn import functional as F
 try:
     from paddleformers.transformers.gpt_provider import GPTModelProvider
 except:
-    GPTModelProvider = None
+    GPTModelProvider = object
 
 from ...nn.attention.interface import ALL_ATTENTION_FUNCTIONS
 from ...nn.attention.utils import repeat_kv
