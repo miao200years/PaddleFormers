@@ -19,8 +19,26 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from .utils.lazy_import import _LazyModule
+from .utils.tools import compare_version
 
 PADDLEFORMERS_STABLE_VERSION = "PADDLEFORMERS_STABLE_VERSION"
+import warnings
+
+try:
+    from importlib import metadata
+except ImportError:
+    import importlib_metadata as metadata
+
+
+def _check_dependency_versions():
+    for pkg_name, min_version in [("paddlepaddle", "3.3"), ("paddlefleet", "0.1")]:
+        _version = metadata.version(pkg_name)
+        if compare_version(_version, min_version) < 0:
+            warnings.warn("Version check warning:\n" + f"{pkg_name} version {version}, recommended >= {min_version}")
+
+
+_check_dependency_versions()
+
 
 with suppress(Exception):
     import paddle
