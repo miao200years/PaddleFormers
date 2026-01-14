@@ -31,10 +31,15 @@ except ImportError:
 
 
 def _check_dependency_versions():
-    for pkg_name, min_version in [("paddlepaddle", "3.3"), ("paddlefleet", "0.1")]:
-        _version = metadata.version(pkg_name)
-        if compare_version(_version, min_version) < 0:
-            warnings.warn("Version check warning:\n" + f"{pkg_name} version {version}, recommended >= {min_version}")
+    for pkg_name, min_version in [(["paddlepaddle-gpu", "paddlepaddle"], "3.3"), (["paddlefleet"], "0.1")]:
+        try:
+            _version = metadata.version(pkg_name)
+            if compare_version(_version, min_version) < 0:
+                warnings.warn(
+                    "Version check warning:\n" + f"{pkg_name} version {version}, recommended >= {min_version}"
+                )
+        except:
+            pass
 
 
 _check_dependency_versions()
