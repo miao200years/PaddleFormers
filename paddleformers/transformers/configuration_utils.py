@@ -456,6 +456,8 @@ class LlmMetaConfig:
         ("hidden_size", int, None, "Hidden size/dimension of the model."),
         ("intermediate_size", int, None, "Intermediate size in the feed-forward network."),
         ("n_routed_experts", int, None, "Number of routed experts in the model (for MoE models)."),
+        ("use_qk_norm", bool, None, "Whether to use query/key normalization."),
+        ("tie_word_embeddings", bool, None, "Whether to tie input and output embeddings."),
     ]
 
     model_attributes = [
