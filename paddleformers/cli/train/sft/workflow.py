@@ -256,6 +256,12 @@ def run_sft(
     model_config._attn_implementation = model_args.attn_impl
     model_config.is_lora = model_args.lora
 
+    def set_attr_func(config, key, value):
+        if value is not None:
+            setattr(config, key, value)
+
+    set_attr_func(model_config, "hidden_size", model_args.hidden_size)
+
     # Sync arguments to MLLM sub_config
     if getattr(model_config, "text_config", None) is not None:
         model_config.text_config.max_sequence_length = data_args.max_seq_len
