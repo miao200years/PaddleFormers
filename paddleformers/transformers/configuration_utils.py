@@ -545,6 +545,24 @@ class LlmMetaConfig:
         return ret
 
     @classmethod
+    def _get_init(cls):
+        ret = {}
+        for attrs in [
+            cls.op_fusion_attributes,
+            cls.hybrid_parallel_attributes,
+            cls.recompute_attributes,
+            cls.loss_attributes,
+            cls.moe_attributes,
+            cls.mtp_attributes,
+            cls.fp8_attributes,
+            cls.model_attributes,
+        ]:
+            for attr in attrs:
+                # return dict of key and default values
+                ret[attr[0]] = attr[2]
+        return ret
+
+    @classmethod
     def _get_all_meta(cls):
         ret = []
         for attrs in [
@@ -814,7 +832,7 @@ class PretrainedConfig:
         # map the old attr to new atr, eg: num_classes -> num_labels
         kwargs = attribute_map(self, kwargs=kwargs)
         kwargs.pop("transformers_version", None)
-        llm_meta = LlmMetaConfig._get_defaults()
+        llm_meta = LlmMetaConfig._get_init()
         self._unsavable_keys.update(LlmMetaConfig._get_unsavable_keys())
         self._unsavable_keys.remove("tensor_model_parallel_size")
         self._unsavable_keys.remove("fuse_attention_qkv")
