@@ -23,7 +23,7 @@ class VisionArguments:
     depth: int = field(default=32, metadata={"help": "Depth of the vision model"})
     embed_dim: int = field(default=1280, metadata={"help": "Embedding dimension"})
     hidden_act: str = field(default="quick_gelu", metadata={"help": "Hidden activation function"})
-    hidden_size: int = field(default=None, metadata={"help": "Hidden size"})
+    hidden_size: int = field(default=1280, metadata={"help": "Hidden size"})
     in_channels: int = field(default=3, metadata={"help": "Input channels"})
     mlp_ratio: int = field(default=4, metadata={"help": "MLP ratio"})
     model_type: str = field(default="DFNRope_vision_transformer", metadata={"help": "Vision model type"})
@@ -195,16 +195,6 @@ class ModelArguments:
     max_position_embeddings: int = field(default=4096, metadata={"help": "Maximum position embeddings"})
     moe_gate: str = field(default="top2_fused", metadata={"help": "MoE gate type"})
     loss_subbatch_seqlen: int = field(default=32768, metadata={"help": "Sub batch size for loss calculation"})
-
-    use_qk_norm: Optional[bool] = field(
-        default=None,
-        metadata={"help": "use_qk_norm."},
-    )
-
-    tie_word_embeddings: Optional[bool] = field(
-        default=None,
-        metadata={"help": "tie_word_embeddings."},
-    )
 
     def __post_init__(self):
         if self.fine_tuning.lower() == "LoRA".lower():
