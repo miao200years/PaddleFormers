@@ -176,10 +176,6 @@ class ModelArguments:
             "help": "Pre-training from existing paddleformers model weights. Default False and model will train from scratch. If set True, the model_name_or_path argument must exist in the paddleformers models."
         },
     )
-    num_hidden_layers: Optional[int] = field(
-        default=None,
-        metadata={"help": "num_hidden_layers."},
-    )
 
 
 def create_pretrained_dataset(
