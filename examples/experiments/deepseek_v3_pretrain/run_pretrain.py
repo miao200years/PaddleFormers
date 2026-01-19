@@ -478,9 +478,6 @@ def main():
         config.vocab_size = max(config.vocab_size, ((tokenizer.vocab_size - 1) // 128 + 1) * 128)
         logger.info(f"Reset vocab size to {config.vocab_size} for batter amp peformance.")
 
-    config.num_hidden_layers = (
-        model_args.num_hidden_layers if model_args.num_hidden_layers is not None else config.num_hidden_layers
-    )
     # Config for model using dropout, such as GPT.
     if hasattr(config, "use_dualpipev"):
         # NOTE(zhangyuqin): In Paddle, the segmentation and scheduling of pipeline parallel
