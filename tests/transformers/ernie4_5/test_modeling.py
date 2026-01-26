@@ -14,13 +14,11 @@
 # limitations under the License.
 from __future__ import annotations
 
-import sys
 import tempfile
 import unittest
 
 import numpy as np
 import paddle
-from parameterized import parameterized
 
 from paddleformers.transformers import (
     Ernie4_5Config,
@@ -463,41 +461,30 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
         # 1. create common input
         input_ids = np.random.randint(100, 200, [1, 20])
 
-        # 2. forward the paddle model
-        from paddleformers.transformers import Ernie4_5Model
-
-        paddle_model = Ernie4_5Model.from_pretrained(self.torch_model_path, convert_from_hf=True, dtype="float32")
-        paddle_model.eval()
-        paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
-
-        # 3. forward the torch  model
-        try:
-            sys.modules["torch"] = sys.modules["torch_save"]
-        except:
-            pass
-        try:
-            del sys.modules["transformers"]
-        except:
-            pass
+        # 2. forward the torch model
         import torch
-        from transformers import Ernie4_5Model
+        from transformers import Ernie4_5ForCausalLM
 
-        torch_model = Ernie4_5Model.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
+        torch_model = Ernie4_5ForCausalLM.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
         torch_model.eval()
         torch_logit = torch_model(torch.tensor(input_ids), return_dict=False)[0]
+
+        # 3. forward the paddle model
+        from paddleformers.transformers import Ernie4_5ForCausalLM
+
+        paddle_model = Ernie4_5ForCausalLM.from_pretrained(
+            self.torch_model_path, dtype="float32", load_checkpoint_format="flex_checkpoint"
+        )
+        paddle_model.eval()
+        paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
         self.assertTrue(
             np.allclose(
                 paddle_logit.detach().cpu().reshape([-1])[:9].astype("float32").numpy(),
                 torch_logit.detach().cpu().reshape([-1])[:9].float().numpy(),
-                rtol=1e2,
+                rtol=1e-2,
             )
         )
-        sys.modules["torch"] = None
-        try:
-            del sys.modules["transformers"]
-        except:
-            pass
 
     @require_package("transformers", "torch")
     def test_ernie4_5_converter_from_local_dir(self):
@@ -506,27 +493,21 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
             # 1. create common input
             input_ids = np.random.randint(100, 200, [1, 20])
 
-            # 2. forward the torch  model
-            try:
-                sys.modules["torch"] = sys.modules["torch_save"]
-            except:
-                pass
-            try:
-                del sys.modules["transformers"]
-            except:
-                pass
+            # 2. forward the torch model
             import torch
-            from transformers import Ernie4_5Model
+            from transformers import Ernie4_5ForCausalLM
 
-            torch_model = Ernie4_5Model.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
+            torch_model = Ernie4_5ForCausalLM.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
             torch_model.eval()
             torch_model.save_pretrained(tempdir)
             torch_logit = torch_model(torch.tensor(input_ids), return_dict=False)[0]
 
-            # 2. forward the paddle model
-            from paddleformers.transformers import Ernie4_5Model
+            # 3. forward the paddle model
+            from paddleformers.transformers import Ernie4_5ForCausalLM
 
-            paddle_model = Ernie4_5Model.from_pretrained(tempdir, convert_from_hf=True, dtype="float32")
+            paddle_model = Ernie4_5ForCausalLM.from_pretrained(
+                tempdir, dtype="float32", load_checkpoint_format="flex_checkpoint"
+            )
             paddle_model.eval()
             paddle_logit = paddle_model(paddle.to_tensor(input_ids))[0]
 
@@ -534,26 +515,21 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                 np.allclose(
                     paddle_logit.detach().cpu().reshape([-1])[:9].astype("float32").numpy(),
                     torch_logit.detach().cpu().reshape([-1])[:9].float().numpy(),
-                    rtol=1e2,
+                    rtol=1e-2,
                 )
             )
-            sys.modules["torch"] = None
-            try:
-                del sys.modules["transformers"]
-            except:
-                pass
 
-            # 3. forward with fc
+            # 4. forward with fc
             from paddleformers.transformers import Ernie4_5Config, Ernie4_5ForCausalLM
 
             uc_load_model = Ernie4_5ForCausalLM.from_pretrained(
                 self.torch_model_path,
                 convert_from_hf=True,
                 dtype="float32",
-                load_checkpoint_format="unified_checkpoint",
+                load_checkpoint_format="",
             )
             fc_load_model = Ernie4_5ForCausalLM.from_pretrained(
-                self.torch_model_path, convert_from_hf=True, dtype="float32", load_checkpoint_format="flex_checkpoint"
+                self.torch_model_path, dtype="float32", load_checkpoint_format="flex_checkpoint"
             )
             uc_load_model.eval()
             fc_load_model.eval()
@@ -568,13 +544,13 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                 )
             )
 
+            # 5. fuse qkv/ffn with fc
             model_config = Ernie4_5Config.from_pretrained(self.torch_model_path)
             model_config.fuse_attention_qkv = True
             model_config.fuse_attention_ffn = True
             fc_fused_load_model = Ernie4_5ForCausalLM.from_pretrained(
                 self.torch_model_path,
                 config=model_config,
-                convert_from_hf=True,
                 dtype="float32",
                 load_checkpoint_format="flex_checkpoint",
             )
@@ -588,60 +564,3 @@ class Ernie4_5CompatibilityTest(unittest.TestCase):
                     rtol=1e-5,
                 )
             )
-
-    @parameterized.expand([("Ernie4_5Model",), ("Ernie4_5ForCausalLM",)])
-    @require_package("transformers", "torch")
-    def test_ernie4_5_classes_from_local_dir(self, class_name, pytorch_class_name: str | None = None):
-        pytorch_class_name = pytorch_class_name or class_name
-        with tempfile.TemporaryDirectory() as tempdir:
-
-            # 1. create common input
-            input_ids = np.random.randint(100, 200, [1, 20])
-
-            # 2. forward the torch model
-            try:
-                sys.modules["torch"] = sys.modules["torch_save"]
-            except:
-                pass
-            try:
-                del sys.modules["transformers"]
-            except:
-                pass
-            import torch
-            import transformers
-
-            torch_model_class = getattr(transformers, pytorch_class_name)
-            torch_model = torch_model_class.from_pretrained(self.torch_model_path, torch_dtype=torch.float32)
-            torch_model.eval()
-
-            torch_model.save_pretrained(tempdir)
-            torch_logit = torch_model(torch.tensor(input_ids), return_dict=False)[0]
-
-            # 3. forward the paddle model
-            from paddleformers import transformers
-
-            paddle_model_class = getattr(transformers, class_name)
-            paddle_model = paddle_model_class.from_pretrained(tempdir, convert_from_hf=True, dtype="float32")
-            paddle_model.eval()
-
-            if class_name == "Ernie4_5Model":
-                paddle_logit = paddle_model(paddle.to_tensor(input_ids), return_dict=False)[0]
-            else:
-                paddle_logit = paddle_model(paddle.to_tensor(input_ids), return_dict=True).logits
-
-            self.assertTrue(
-                np.allclose(
-                    paddle_logit.detach().cpu().reshape([-1])[:9].astype("float32").numpy(),
-                    torch_logit.detach().cpu().reshape([-1])[:9].float().numpy(),
-                    atol=1e2,
-                )
-            )
-            sys.modules["torch"] = None
-            try:
-                del sys.modules["transformers"]
-            except:
-                pass
-
-
-if __name__ == "__main__":
-    unittest.main()

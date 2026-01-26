@@ -20,7 +20,6 @@
 """Paddle Qwen2 model."""
 from __future__ import annotations
 
-from functools import partial
 from typing import Dict, Optional, Tuple, Union
 
 import paddle
@@ -306,62 +305,6 @@ class Qwen2PretrainedModel(PretrainedModel):
     transpose_weight_keys = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
     @classmethod
-    def _get_tensor_parallel_mappings(cls, config: Qwen2Config, is_split=True):
-        """Generate tensor parallel mappings for model conversion."""
-        from ..conversion_utils import split_or_merge_func
-
-        fn = split_or_merge_func(
-            is_split=is_split,
-            tensor_model_parallel_size=config.tensor_model_parallel_size,
-            tensor_parallel_rank=config.tensor_parallel_rank,
-            num_attention_heads=config.num_attention_heads,
-        )
-
-        LAYER_COLWISE = [
-            "self_attn.q_proj.weight",
-            "self_attn.k_proj.weight",
-            "self_attn.v_proj.weight",
-            "mlp.up_proj.weight",
-            "mlp.gate_proj.weight",
-        ]
-
-        LAYER_ROWWISE = ["self_attn.o_proj.weight", "mlp.down_proj.weight"]
-
-        BIAS_KEYS = [
-            "self_attn.q_proj.bias",
-            "self_attn.k_proj.bias",
-            "self_attn.v_proj.bias",
-        ]
-
-        def make_base_actions():
-            actions = {
-                "lm_head.weight": partial(fn, is_column=False),
-                "embed_tokens.weight": partial(fn, is_column=False),
-            }
-            for layer_idx in range(config.num_hidden_layers):
-                actions.update(
-                    {
-                        f"{cls.base_model_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                        for k in LAYER_COLWISE
-                    }
-                )
-                actions.update(
-                    {
-                        f"{cls.base_model_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=False)
-                        for k in LAYER_ROWWISE
-                    }
-                )
-                # bias
-                actions.update(
-                    {f"{cls.base_model_prefix}.layers.{layer_idx}.{b}": partial(fn, is_column=True) for b in BIAS_KEYS}
-                )
-
-            return actions
-
-        mappings = make_base_actions()
-        return mappings
-
-    @classmethod
     def _gen_aoa_config(cls, config: Qwen2Config):
         model_prefix = "" if cls == cls.base_model_class else "model."
         aoa_config = {
@@ -379,6 +322,10 @@ class Qwen2PretrainedModel(PretrainedModel):
         if not config.fuse_attention_qkv:
             aoa_config["aoa_statements"] += [
                 f"model.layers.$LAYER_ID.self_attn.{x}_proj.weight^T -> {model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.weight"
+                for x in ("q", "k", "v")
+            ]
+            aoa_config["aoa_statements"] += [
+                f"model.layers.$LAYER_ID.self_attn.{x}_proj.bias -> {model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.bias"
                 for x in ("q", "k", "v")
             ]
         else:
@@ -421,6 +368,10 @@ class Qwen2PretrainedModel(PretrainedModel):
         if not config.fuse_attention_qkv:
             aoa_statements += [
                 f"{model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.weight^T -> model.layers.$LAYER_ID.self_attn.{x}_proj.weight"
+                for x in ("q", "k", "v")
+            ]
+            aoa_statements += [
+                f"{model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.bias -> model.layers.$LAYER_ID.self_attn.{x}_proj.bias"
                 for x in ("q", "k", "v")
             ]
         else:
@@ -501,26 +452,19 @@ class Qwen2RotaryEmbedding(nn.Layer):
 
     @dynamic_rope_update
     def forward(self, x, position_ids):
-        # NOTE: Paddle's Automatic Mixed Precision (AMP) has a default op whitelist that may automatically cast
-        # certain operations (like matmul) to FP16/BF16 for performance optimization. However, in scenarios where
-        # numerical stability is critical (e.g., RoPE init/compute), this conversion can lead to precision loss.
-        # Disabling auto_cast here ensures the matmul operation runs in the original precision (FP32) as intended.
-        with paddle.amp.auto_cast(False):
-            inv_freq_expanded = (
-                self.inv_freq.unsqueeze(0)
-                .unsqueeze(-1)
-                .cast(paddle.float32)
-                .expand([position_ids.shape[0], -1, 1])
-                .to(x.place)
-            )
-            position_ids_expanded = position_ids.unsqueeze(1).cast(paddle.float32)
+        with paddle.amp.auto_cast(enable=False):
+            inv_freq_expanded = self.inv_freq[None, :, None].float().expand([position_ids.shape[0], -1, 1])
 
-            freqs = paddle.matmul(inv_freq_expanded, position_ids_expanded).transpose([0, 2, 1])
-            emb = paddle.cat((freqs, freqs), axis=-1)
-            cos = paddle.cos(emb) * self.attention_scaling
-            sin = paddle.sin(emb) * self.attention_scaling
+            position_ids_expanded = position_ids[:, None, :].float()
 
-        return cos.cast(dtype=x.dtype), sin.cast(dtype=x.dtype)
+            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
+
+            emb = paddle.concat((freqs, freqs), axis=-1)
+
+            cos = emb.cos() * self.attention_scaling
+            sin = emb.sin() * self.attention_scaling
+
+        return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
 
 @register_base_model

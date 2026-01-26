@@ -20,7 +20,6 @@
 """Paddle Qwen3 model."""
 from __future__ import annotations
 
-from functools import partial
 from typing import Dict, Optional, Tuple, Union
 
 import paddle
@@ -38,6 +37,7 @@ from ...nn.mlp import MLP as Qwen3MLP
 from ...nn.norm import Norm as GeneralNorm
 from ...nn.pp_model import GeneralModelForCausalLMPipe
 from ...utils.log import logger
+from ...utils.masking_utils import _gen_from_sparse_attn_mask_indices
 from ..cache_utils import Cache, DynamicCache
 from ..contrastive_loss import SimpleContrastiveLoss
 from ..embedding_utils import dist_gather_tensor_with_gradient
@@ -70,6 +70,52 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     q_embed = (q * cos) + (rotate_half(q) * sin)
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed.astype(q.dtype), k_embed.astype(k.dtype)
+
+
+def repeat_kv(hidden_states: paddle.Tensor, n_rep: int) -> paddle.Tensor:
+    batch, num_key_value_heads, slen, head_dim = hidden_states.shape
+    if n_rep == 1:
+        return hidden_states
+    hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+    return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+
+
+def eager_attention_forward(
+    module: nn.Layer,
+    query: paddle.Tensor,
+    key: paddle.Tensor,
+    value: paddle.Tensor,
+    attention_mask: Optional[paddle.Tensor],
+    scaling: float,
+    dropout: float = 0.0,
+    **kwargs,
+):
+    key_states = repeat_kv(key, module.num_key_value_groups)
+    value_states = repeat_kv(value, module.num_key_value_groups)
+
+    if attention_mask is None and kwargs.get("attn_mask_startend_row_indices", None) is not None:
+        attn_mask_startend_row_indices = kwargs["attn_mask_startend_row_indices"]
+        if attn_mask_startend_row_indices.ndim == 3:
+            attn_mask_startend_row_indices = attn_mask_startend_row_indices.unsqueeze(-1)
+        if attn_mask_startend_row_indices is not None and attn_mask_startend_row_indices.shape[-1] == 1:
+            is_causal = True
+        if attn_mask_startend_row_indices is not None and attn_mask_startend_row_indices.shape[-1] == 4:
+            is_causal = False
+
+        attention_mask = _gen_from_sparse_attn_mask_indices(attn_mask_startend_row_indices, query.dtype, is_causal)
+
+    attn_weights = paddle.matmul(query, key_states.transpose(2, 3)) * scaling
+
+    if attention_mask is not None:
+        causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
+        attn_weights = attn_weights + causal_mask
+
+    attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=paddle.float32).to(query.dtype)
+    attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
+    attn_output = paddle.matmul(attn_weights, value_states)
+    attn_output = attn_output.transpose(1, 2).contiguous()
+
+    return attn_output, attn_weights
 
 
 class Qwen3Attention(nn.Layer):
@@ -228,7 +274,9 @@ class Qwen3Attention(nn.Layer):
         if past_key_values is not None:
             key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx)
 
-        attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+        attention_interface = eager_attention_forward
+        if self.config._attn_implementation != "eager":
+            attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
 
         attn_output, attn_weights = attention_interface(
             self,
@@ -245,6 +293,7 @@ class Qwen3Attention(nn.Layer):
         # else their shape are [bs, q_len, num_head * head_dim], n is mp parallelism.
         if self.config.sequence_parallel:
             attn_output = attn_output.reshape([-1, attn_output.shape[-1]])
+        attn_output = attn_output.reshape(*hidden_states.shape[:-1], -1).contiguous()
         attn_output = self.o_proj(attn_output)
 
         return attn_output, attn_weights
@@ -322,66 +371,6 @@ class Qwen3PretrainedModel(PretrainedModel):
     transpose_weight_keys = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
     @classmethod
-    def _get_tensor_parallel_mappings(cls, config: Qwen3Config, is_split=True):
-        """Generate tensor parallel mappings for model conversion."""
-        from ..conversion_utils import split_or_merge_func
-
-        fn = split_or_merge_func(
-            is_split=is_split,
-            tensor_model_parallel_size=config.tensor_model_parallel_size,
-            tensor_parallel_rank=config.tensor_parallel_rank,
-            num_attention_heads=config.num_attention_heads,
-        )
-
-        LAYER_COLWISE = [
-            "self_attn.q_proj.weight",
-            "self_attn.k_proj.weight",
-            "self_attn.v_proj.weight",
-            "mlp.up_proj.weight",
-            "mlp.gate_proj.weight",
-        ]
-
-        LAYER_ROWWISE = ["self_attn.o_proj.weight", "mlp.down_proj.weight"]
-
-        BIAS_KEYS = [
-            "self_attn.q_proj.bias",
-            "self_attn.k_proj.bias",
-            "self_attn.v_proj.bias",
-        ]
-
-        def make_base_actions():
-            actions = {
-                "lm_head.weight": partial(fn, is_column=False),
-                "embed_tokens.weight": partial(fn, is_column=False),
-            }
-            for layer_idx in range(config.num_hidden_layers):
-                actions.update(
-                    {
-                        f"{cls.base_model_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                        for k in LAYER_COLWISE
-                    }
-                )
-                actions.update(
-                    {
-                        f"{cls.base_model_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=False)
-                        for k in LAYER_ROWWISE
-                    }
-                )
-                # bias
-                if config.attention_bias:
-                    actions.update(
-                        {
-                            f"{cls.base_model_prefix}.layers.{layer_idx}.{b}": partial(fn, is_column=True)
-                            for b in BIAS_KEYS
-                        }
-                    )
-
-            return actions
-
-        mappings = make_base_actions()
-        return mappings
-
-    @classmethod
     def _gen_aoa_config(cls, config: Qwen3Config):
         model_prefix = "" if cls == cls.base_model_class else "model."
         aoa_config = {
@@ -403,6 +392,11 @@ class Qwen3PretrainedModel(PretrainedModel):
                 f"model.layers.$LAYER_ID.self_attn.{x}_proj.weight^T -> {model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.weight"
                 for x in ("q", "k", "v")
             ]
+            if config.attention_bias:
+                aoa_config["aoa_statements"] += [
+                    f"model.layers.$LAYER_ID.self_attn.{x}_proj.bias -> {model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.bias"
+                    for x in ("q", "k", "v")
+                ]
         else:
             aoa_config["aoa_statements"] += [
                 f"model.layers.$LAYER_ID.self_attn.q_proj.weight^T, model.layers.$LAYER_ID.self_attn.k_proj.weight^T, model.layers.$LAYER_ID.self_attn.v_proj.weight^T -> {model_prefix}layers.$LAYER_ID.self_attn.qkv_proj.weight, fused_qkv, num_heads={config.num_attention_heads}, num_key_value_groups={config.num_key_value_heads}",
@@ -448,6 +442,11 @@ class Qwen3PretrainedModel(PretrainedModel):
                 f"{model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.weight^T -> model.layers.$LAYER_ID.self_attn.{x}_proj.weight"
                 for x in ("q", "k", "v")
             ]
+            if config.attention_bias:
+                aoa_statements += [
+                    f"{model_prefix}layers.$LAYER_ID.self_attn.{x}_proj.bias -> model.layers.$LAYER_ID.self_attn.{x}_proj.bias"
+                    for x in ("q", "k", "v")
+                ]
         else:
             aoa_statements += [
                 f"{model_prefix}layers.$LAYER_ID.self_attn.qkv_proj.weight -> model.layers.$LAYER_ID.self_attn.q_proj.weight, model.layers.$LAYER_ID.self_attn.k_proj.weight, model.layers.$LAYER_ID.self_attn.v_proj.weight , fused_qkv, num_heads={config.num_attention_heads}, num_key_value_groups = {config.num_key_value_heads}",
@@ -527,26 +526,19 @@ class Qwen3RotaryEmbedding(nn.Layer):
 
     @dynamic_rope_update
     def forward(self, x, position_ids):
-        # NOTE: Paddle's Automatic Mixed Precision (AMP) has a default op whitelist that may automatically cast
-        # certain operations (like matmul) to FP16/BF16 for performance optimization. However, in scenarios where
-        # numerical stability is critical (e.g., RoPE init/compute), this conversion can lead to precision loss.
-        # Disabling auto_cast here ensures the matmul operation runs in the original precision (FP32) as intended.
-        with paddle.amp.auto_cast(False):
-            inv_freq_expanded = (
-                self.inv_freq.unsqueeze(0)
-                .unsqueeze(-1)
-                .cast(paddle.float32)
-                .expand([position_ids.shape[0], -1, 1])
-                .to(x.place)
-            )
-            position_ids_expanded = position_ids.unsqueeze(1).cast(paddle.float32)
+        with paddle.amp.auto_cast(enable=False):
+            inv_freq_expanded = self.inv_freq[None, :, None].float().expand([position_ids.shape[0], -1, 1])
 
-            freqs = paddle.matmul(inv_freq_expanded, position_ids_expanded).transpose([0, 2, 1])
-            emb = paddle.cat((freqs, freqs), axis=-1)
-            cos = paddle.cos(emb) * self.attention_scaling
-            sin = paddle.sin(emb) * self.attention_scaling
+            position_ids_expanded = position_ids[:, None, :].float()
 
-        return cos.cast(dtype=x.dtype), sin.cast(dtype=x.dtype)
+            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
+
+            emb = paddle.concat((freqs, freqs), axis=-1)
+
+            cos = emb.cos() * self.attention_scaling
+            sin = emb.sin() * self.attention_scaling
+
+        return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
 
 @register_base_model

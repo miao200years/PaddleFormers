@@ -21,7 +21,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial
 from typing import Any, Optional, Tuple, Union
 
 import paddle
@@ -257,95 +256,6 @@ class Qwen2_5_VLPretrainedModel(PretrainedModel):
         "proj",
         "merger.mlp\.\d+",
     ]
-
-    @classmethod
-    def _get_tensor_parallel_mappings(cls, config: Qwen2_5_VLConfig, is_split=True):
-        """Generate tensor parallel mappings for model conversion."""
-        from ..conversion_utils import split_or_merge_func
-
-        llm_target = next(
-            (v for v in cls._checkpoint_conversion_mapping.values() if "language_model" in v), "language_model"
-        )
-        llm_prefix = f"{llm_target}" if not llm_target.endswith(".") else llm_target
-
-        fn = split_or_merge_func(
-            is_split=is_split,
-            tensor_model_parallel_size=config.text_config.tensor_model_parallel_size,
-            tensor_parallel_rank=config.text_config.tensor_parallel_rank,
-            num_attention_heads=config.text_config.num_attention_heads,
-        )
-
-        ATTN_LAYER_COLWISE = [
-            "self_attn.q_proj.weight",
-            "self_attn.k_proj.weight",
-            "self_attn.v_proj.weight",
-        ]
-        FUSE_ATTN_LAYER_COLWISE = [
-            "self_attn.qkv_proj.weight",
-        ]
-
-        MLP_LAYER_COLWISE = [
-            "mlp.up_proj.weight",
-            "mlp.gate_proj.weight",
-        ]
-        FUSE_MLP_LAYER_COLWISE = [
-            "up_gate_proj.weight",
-        ]
-
-        LAYER_ROWWISE = ["self_attn.o_proj.weight", "mlp.down_proj.weight"]
-
-        BIAS_KEYS = [
-            "self_attn.q_proj.bias",
-            "self_attn.k_proj.bias",
-            "self_attn.v_proj.bias",
-        ]
-
-        def make_base_actions():
-            actions = {
-                "lm_head.weight": partial(fn, is_column=False),
-                f"{llm_prefix}.embed_tokens.weight": partial(fn, is_column=False),
-            }
-            for layer_idx in range(config.text_config.num_hidden_layers):
-                if not config.text_config.fuse_attention_qkv:
-                    actions.update(
-                        {
-                            f"{llm_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                            for k in ATTN_LAYER_COLWISE
-                        }
-                    )
-                else:
-                    actions.update(
-                        {
-                            f"{cls.base_model_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                            for k in FUSE_ATTN_LAYER_COLWISE
-                        }
-                    )
-                if not config.text_config.fuse_attention_ffn:
-                    actions.update(
-                        {
-                            f"{llm_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                            for k in MLP_LAYER_COLWISE
-                        }
-                    )
-                else:
-                    actions.update(
-                        {
-                            f"{llm_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=True)
-                            for k in FUSE_MLP_LAYER_COLWISE
-                        }
-                    )
-                actions.update(
-                    {f"{llm_prefix}.layers.{layer_idx}.{k}": partial(fn, is_column=False) for k in LAYER_ROWWISE}
-                )
-                # bias
-                actions.update(
-                    {f"{llm_prefix}.layers.{layer_idx}.{b}": partial(fn, is_column=True) for b in BIAS_KEYS}
-                )
-
-            return actions
-
-        mappings = make_base_actions()
-        return mappings
 
     @classmethod
     def _gen_aoa_config(cls, config: Qwen2_5_VLConfig):
@@ -640,8 +550,9 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPretrainedModel):
         self,
         layer_module: nn.Layer,
         hidden_states: paddle.Tensor,
-        cu_seqlens_now: paddle.Tensor,
-        position_embeddings: paddle.Tensor,
+        cu_seqlens: paddle.Tensor,
+        rotary_pos_emb: Optional[paddle.Tensor] = None,
+        position_embeddings: Optional[Tuple[paddle.Tensor, paddle.Tensor]] = None,
     ):
         def create_custom_forward(module):
             def custom_forward(*inputs):
@@ -652,7 +563,8 @@ class Qwen2_5_VisionTransformerPretrainedModel(Qwen2_5_VLPretrainedModel):
         hidden_states = recompute(
             create_custom_forward(layer_module),
             hidden_states,
-            cu_seqlens_now,
+            cu_seqlens,
+            rotary_pos_emb,
             position_embeddings,
         )
         return hidden_states
@@ -794,26 +706,19 @@ class Qwen2_5_VLRotaryEmbedding(nn.Layer):
         return inv_freq, attention_factor
 
     def forward(self, x, position_ids):
-        # NOTE: Paddle's Automatic Mixed Precision (AMP) has a default op whitelist that may automatically cast
-        # certain operations (like matmul) to FP16/BF16 for performance optimization. However, in scenarios where
-        # numerical stability is critical (e.g., RoPE init/compute), this conversion can lead to precision loss.
-        # Disabling auto_cast here ensures the matmul operation runs in the original precision (FP32) as intended.
-        with paddle.amp.auto_cast(False):
-            inv_freq_expanded = (
-                self.inv_freq.unsqueeze(0)
-                .unsqueeze(-1)
-                .cast(paddle.float32)
-                .expand([3, position_ids.shape[1], -1, 1])
-                .to(x.place)
-            )
-            position_ids_expanded = position_ids.unsqueeze(2).cast(paddle.float32)
+        with paddle.amp.auto_cast(enable=False):
+            inv_freq_expanded = self.inv_freq[None, None, :, None].float().expand([3, position_ids.shape[1], -1, 1])
 
-            freqs = paddle.matmul(inv_freq_expanded, position_ids_expanded).transpose([0, 1, 3, 2])
-            emb = paddle.cat((freqs, freqs), axis=-1)
-            cos = paddle.cos(emb) * self.attention_scaling
-            sin = paddle.sin(emb) * self.attention_scaling
+            position_ids_expanded = position_ids[:, :, None, :].float()
 
-        return cos.cast(dtype=x.dtype), sin.cast(dtype=x.dtype)
+            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(2, 3)
+
+            emb = paddle.concat((freqs, freqs), axis=-1)
+
+            cos = emb.cos() * self.attention_scaling
+            sin = emb.sin() * self.attention_scaling
+
+        return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
 
 class Qwen2MLP(MLP):
