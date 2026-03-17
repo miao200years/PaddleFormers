@@ -44,6 +44,7 @@ VIDEO_PROCESSOR_MAPPING_NAMES = OrderedDict(
         ("qwen3_vl", "Qwen3VLVideoProcessor"),
         ("qwen2_5_vl", "Qwen2VLVideoProcessor"),
         ("qwen2_vl", "Qwen2VLVideoProcessor"),
+        ("wan22", "Wan22VideoProcessor"),
     ]
 )
 
@@ -55,10 +56,10 @@ def video_processor_class_from_name(class_name: str):
         if class_name in extractors:
             module_name = model_type_to_module_name(module_name)
 
-            module = importlib.import_module(f".{module_name}", "paddleformers.transformers")
             try:
+                module = importlib.import_module(f".{module_name}", "paddleformers.transformers")
                 return getattr(module, class_name)
-            except AttributeError:
+            except (ModuleNotFoundError, AttributeError):
                 continue
 
     for extractor in VIDEO_PROCESSOR_MAPPING._extra_content.values():

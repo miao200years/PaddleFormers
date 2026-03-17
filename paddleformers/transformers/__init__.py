@@ -280,6 +280,13 @@ import_structure = {
     "phi3.configuration": ["Phi3Config"],
     "phi3.tokenizer": ["Phi3Tokenizer"],
     "phi3.modeling": ["Phi3Model", "Phi3ForCausalLM", "Phi3ForCausalLMPipe"],
+    "wan22.configuration": ["Wan22Config", "Wan22VAEConfig", "Wan22DiTConfig"],
+    "wan22.modeling": [
+        "Wan22ForTextToVideo",
+        "Wan22ForImageToVideo",
+        "Wan22PretrainedModel",
+    ],
+    "wan22": [],
 }
 
 if TYPE_CHECKING:

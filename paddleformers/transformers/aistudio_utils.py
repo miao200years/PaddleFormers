@@ -14,7 +14,14 @@
 
 from typing import Optional
 
-from aistudio_sdk.file_download import model_file_download as download
+try:
+    from aistudio_sdk.hub import download
+except ImportError:
+    try:
+        from aistudio_sdk.file_download import model_file_download as download
+    except ImportError:
+        download = None
+
 from requests import HTTPError
 
 
